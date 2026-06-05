@@ -1,0 +1,20 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+
+# Node / Electron
+desktop/node_modules/
+desktop/dist/
+desktop/out/
+desktop/.electron-vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
