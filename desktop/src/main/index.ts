@@ -2,6 +2,28 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { IPC_CHANNELS, type AppInfo, type RuntimeConfig } from '../shared/ipc'
+
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
+const DEFAULT_WS_BASE_URL = 'ws://127.0.0.1:8000'
+
+function getRuntimeConfig(): RuntimeConfig {
+  return {
+    apiBaseUrl: process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL,
+    wsBaseUrl: process.env.WS_BASE_URL ?? DEFAULT_WS_BASE_URL
+  }
+}
+
+function getAppInfo(): AppInfo {
+  return {
+    appName: app.getName(),
+    appVersion: app.getVersion(),
+    electronVersion: process.versions.electron,
+    chromiumVersion: process.versions.chrome,
+    nodeVersion: process.versions.node,
+    platform: process.platform
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -13,7 +35,10 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      devTools: is.dev
     }
   })
 
@@ -24,6 +49,15 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const appUrl = new URL(mainWindow.webContents.getURL() || 'http://localhost')
+    const targetUrl = new URL(url)
+
+    if (targetUrl.origin !== appUrl.origin) {
+      event.preventDefault()
+    }
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -49,8 +83,8 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.handle(IPC_CHANNELS.APP_GET_INFO, () => getAppInfo())
+  ipcMain.handle(IPC_CHANNELS.APP_GET_RUNTIME_CONFIG, () => getRuntimeConfig())
 
   createWindow()
 
