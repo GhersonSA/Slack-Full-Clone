@@ -1,4 +1,12 @@
-import type { Channel, CreateChannelPayload, CreateUserPayload, User } from '@renderer/types/api'
+import type {
+  AddChannelMemberPayload,
+  Channel,
+  ChannelMember,
+  CreateChannelPayload,
+  CreateUserPayload,
+  Message,
+  User
+} from '@renderer/types/api'
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -53,5 +61,16 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload)
     })
+  }
+
+  addMemberToChannel(channelId: string, payload: AddChannelMemberPayload): Promise<ChannelMember> {
+    return requestJson<ChannelMember>(this.api(`/channels/${channelId}/members`), {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  listMessages(channelId: string): Promise<Message[]> {
+    return requestJson<Message[]>(this.api(`/channels/${channelId}/messages`))
   }
 }

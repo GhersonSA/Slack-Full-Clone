@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { useChannelWebSocket } from '@renderer/hooks/useChannelWebSocket'
 import { ApiClient } from '@renderer/services/apiClient'
-import type { Channel, User } from '@renderer/types/api'
+import type { Channel, Message, User } from '@renderer/types/api'
 
 function App(): React.JSX.Element {
   const [apiInfo, setApiInfo] = useState('Loading runtime info...')
@@ -17,6 +17,7 @@ function App(): React.JSX.Element {
   const [channelTopic, setChannelTopic] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
+  const [historyMessages, setHistoryMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')
 
   const apiClient = useMemo(() => {
@@ -34,7 +35,10 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const loadDesktopContext = async (): Promise<void> => {
-      const [info, runtime] = await Promise.all([window.api.getAppInfo(), window.api.getRuntimeConfig()])
+      const [info, runtime] = await Promise.all([
+        window.api.getAppInfo(),
+        window.api.getRuntimeConfig()
+      ])
 
       setApiInfo(`${info.appName} v${info.appVersion} | Electron ${info.electronVersion}`)
       setApiBaseUrl(runtime.apiBaseUrl)
@@ -110,6 +114,33 @@ function App(): React.JSX.Element {
     }
   }
 
+  const handleJoinChannel = async (): Promise<void> => {
+    if (!apiClient || !channelId || !userId) {
+      return
+    }
+
+    try {
+      await apiClient.addMemberToChannel(channelId, { user_id: userId })
+      setFeedback('Usuario agregado al canal')
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No fue posible unir usuario al canal')
+    }
+  }
+
+  const handleLoadHistory = async (): Promise<void> => {
+    if (!apiClient || !channelId) {
+      return
+    }
+
+    try {
+      const history = await apiClient.listMessages(channelId)
+      setHistoryMessages(history)
+      setFeedback(`Historial cargado: ${history.length} mensajes`)
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No fue posible cargar historial')
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-6 py-8">
       <header className="space-y-2">
@@ -143,7 +174,10 @@ function App(): React.JSX.Element {
               placeholder="display name"
             />
           </div>
-          <button className="w-fit rounded border border-slate-400 px-3 py-2 text-sm" onClick={handleCreateUser}>
+          <button
+            className="w-fit rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={handleCreateUser}
+          >
             Crear usuario
           </button>
         </article>
@@ -164,7 +198,10 @@ function App(): React.JSX.Element {
               placeholder="topic opcional"
             />
           </div>
-          <button className="w-fit rounded border border-slate-400 px-3 py-2 text-sm" onClick={handleCreateChannel}>
+          <button
+            className="w-fit rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={handleCreateChannel}
+          >
             Crear canal
           </button>
         </article>
@@ -174,7 +211,10 @@ function App(): React.JSX.Element {
           <ul className="grid gap-2 text-xs">
             {users.length === 0 ? <li>No hay usuarios aún.</li> : null}
             {users.map((item) => (
-              <li key={item.id} className="flex items-center justify-between rounded border border-slate-200 p-2">
+              <li
+                key={item.id}
+                className="flex items-center justify-between rounded border border-slate-200 p-2"
+              >
                 <span>
                   {item.username} ({item.display_name})
                 </span>
@@ -194,7 +234,10 @@ function App(): React.JSX.Element {
           <ul className="grid gap-2 text-xs">
             {channels.length === 0 ? <li>No hay canales aún.</li> : null}
             {channels.map((item) => (
-              <li key={item.id} className="flex items-center justify-between rounded border border-slate-200 p-2">
+              <li
+                key={item.id}
+                className="flex items-center justify-between rounded border border-slate-200 p-2"
+              >
                 <span>
                   {item.name} {item.topic ? `- ${item.topic}` : ''}
                 </span>
@@ -234,13 +277,28 @@ function App(): React.JSX.Element {
 
         <div className="flex flex-wrap gap-2">
           <button
+            className="rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={handleJoinChannel}
+          >
+            Unir usuario al canal
+          </button>
+          <button
+            className="rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={handleLoadHistory}
+          >
+            Cargar historial REST
+          </button>
+          <button
             className="rounded border border-slate-400 px-3 py-2 text-sm disabled:opacity-50"
             onClick={connect}
             disabled={!canConnect}
           >
             Conectar
           </button>
-          <button className="rounded border border-slate-400 px-3 py-2 text-sm" onClick={disconnect}>
+          <button
+            className="rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={disconnect}
+          >
             Desconectar
           </button>
           <button className="rounded border border-slate-400 px-3 py-2 text-sm" onClick={sendPing}>
@@ -260,7 +318,10 @@ function App(): React.JSX.Element {
             onChange={(event) => setDraftMessage(event.target.value)}
             placeholder="Mensaje de prueba"
           />
-          <button className="rounded border border-slate-400 px-3 py-2 text-sm" onClick={handleSendMessage}>
+          <button
+            className="rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={handleSendMessage}
+          >
             Enviar
           </button>
         </div>
@@ -271,7 +332,26 @@ function App(): React.JSX.Element {
             {events.length === 0 ? <li>No hay eventos aún.</li> : null}
             {events.map((event, index) => (
               <li key={`${event.type}-${index}`} className="rounded bg-slate-50 p-2">
-                <pre className="whitespace-pre-wrap break-all">{JSON.stringify(event, null, 2)}</pre>
+                <pre className="whitespace-pre-wrap break-all">
+                  {JSON.stringify(event, null, 2)}
+                </pre>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="rounded border border-slate-200 p-3">
+          <h3 className="mb-2 text-sm font-medium">Historial REST de mensajes</h3>
+          <ul className="grid gap-2 text-xs">
+            {historyMessages.length === 0 ? <li>No hay historial cargado.</li> : null}
+            {historyMessages.map((item) => (
+              <li key={item.id} className="rounded bg-slate-50 p-2">
+                <p>
+                  <strong>Author:</strong> {item.author_id}
+                </p>
+                <p>
+                  <strong>Body:</strong> {item.body}
+                </p>
               </li>
             ))}
           </ul>
