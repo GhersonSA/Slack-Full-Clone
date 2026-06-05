@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 from pydantic import ValidationError
 from sqlmodel import Session, desc, select
 
-from app.db.models import Channel, Message, User
+from app.db.models import Channel, ChannelMember, Message, User
 from app.db.session import engine
 from app.realtime.connection_manager import connection_manager
 from app.realtime.schemas import IncomingChatEvent, OutgoingChatMessage, OutgoingSystemEvent
@@ -12,17 +12,25 @@ from app.realtime.schemas import IncomingChatEvent, OutgoingChatMessage, Outgoin
 router = APIRouter()
 
 
-def _ensure_chat_membership(session: Session, channel_id: UUID, user_id: UUID) -> tuple[Channel | None, User | None]:
+def _ensure_chat_membership(session: Session, channel_id: UUID, user_id: UUID) -> tuple[Channel | None, User | None, bool]:
     channel = session.get(Channel, channel_id)
     user = session.get(User, user_id)
-    return channel, user
+    if channel is None or user is None:
+        return channel, user, False
+
+    membership_query = select(ChannelMember).where(
+        ChannelMember.channel_id == channel_id,
+        ChannelMember.user_id == user_id,
+    )
+    membership = session.exec(membership_query).first()
+    return channel, user, membership is not None
 
 
 @router.websocket("/ws/channels/{channel_id}")
 async def channel_chat(websocket: WebSocket, channel_id: UUID, user_id: UUID = Query(...)) -> None:
     with Session(engine) as session:
-        channel, user = _ensure_chat_membership(session, channel_id, user_id)
-        if channel is None or user is None:
+        channel, user, is_member = _ensure_chat_membership(session, channel_id, user_id)
+        if channel is None or user is None or not is_member:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 

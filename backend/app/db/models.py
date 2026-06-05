@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -42,6 +42,19 @@ class Message(SQLModel, table=True):
     channel_id: UUID = Field(foreign_key="channels.id", index=True)
     author_id: UUID = Field(foreign_key="users.id", index=True)
     body: str = Field(min_length=1, max_length=4000)
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class ChannelMember(SQLModel, table=True):
+    __tablename__ = "channel_members"
+    __table_args__ = (UniqueConstraint("channel_id", "user_id", name="uq_channel_members_channel_user"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    channel_id: UUID = Field(foreign_key="channels.id", index=True)
+    user_id: UUID = Field(foreign_key="users.id", index=True)
     created_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False),
