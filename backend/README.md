@@ -46,6 +46,9 @@ uvicorn app.main:app --reload
 - POST /api/v1/channels
 - GET /api/v1/channels
 - GET /api/v1/channels/{channel_id}
+- POST /api/v1/channels/{channel_id}/members
+- GET /api/v1/channels/{channel_id}/members
+- GET /api/v1/channels/{channel_id}/messages
 - WS /api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}
 
 ## WebSocket Contract
