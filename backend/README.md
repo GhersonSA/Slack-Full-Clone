@@ -46,3 +46,36 @@ uvicorn app.main:app --reload
 - POST /api/v1/channels
 - GET /api/v1/channels
 - GET /api/v1/channels/{channel_id}
+- WS /api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}
+
+## WebSocket Contract
+
+- Client ping:
+
+```json
+{
+	"type": "ping"
+}
+```
+
+- Client chat message:
+
+```json
+{
+	"type": "message",
+	"body": "hello team"
+}
+```
+
+- Server chat event:
+
+```json
+{
+	"type": "message",
+	"id": "uuid",
+	"channel_id": "uuid",
+	"author_id": "uuid",
+	"body": "hello team",
+	"created_at": "2026-06-05T18:00:00Z"
+}
+```
