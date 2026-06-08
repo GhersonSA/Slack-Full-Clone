@@ -405,4 +405,133 @@ describe('App', () => {
 
     expect(screen.getByText('No hay historial cargado.')).toBeTruthy()
   })
+
+  it('does not call join endpoint when channel or user id is missing', async () => {
+    mockedUseChannelWebSocket.mockReturnValue({
+      status: 'disconnected',
+      events: [],
+      retryAttempt: 0,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendMessage: vi.fn().mockReturnValue(false),
+      sendPing: vi.fn().mockReturnValue(false)
+    })
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString()
+
+        if (url.endsWith('/api/v1/users') && !init?.method) {
+          return jsonResponse([])
+        }
+        if (url.endsWith('/api/v1/channels') && !init?.method) {
+          return jsonResponse([])
+        }
+
+        return jsonResponse({ detail: 'Unhandled URL' }, false, 404)
+      })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/API base URL:/).textContent).toContain('http://127.0.0.1:8000')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unir usuario al canal' }))
+
+    const memberCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('/api/v1/channels/') && String(url).includes('/members')
+    )
+    expect(memberCalls).toHaveLength(0)
+  })
+
+  it('does not call history endpoint when channel id is missing', async () => {
+    mockedUseChannelWebSocket.mockReturnValue({
+      status: 'connected',
+      events: [],
+      retryAttempt: 0,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendMessage: vi.fn().mockReturnValue(true),
+      sendPing: vi.fn().mockReturnValue(true)
+    })
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString()
+
+        if (url.endsWith('/api/v1/users') && !init?.method) {
+          return jsonResponse([])
+        }
+        if (url.endsWith('/api/v1/channels') && !init?.method) {
+          return jsonResponse([])
+        }
+
+        return jsonResponse({ detail: 'Unhandled URL' }, false, 404)
+      })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/API base URL:/).textContent).toContain('http://127.0.0.1:8000')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar historial REST' }))
+
+    const historyCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('/api/v1/channels/') && String(url).includes('/messages')
+    )
+    expect(historyCalls).toHaveLength(0)
+  })
+
+  it('does not try to send when draft message is blank', async () => {
+    const sendMessage = vi.fn().mockReturnValue(true)
+
+    mockedUseChannelWebSocket.mockReturnValue({
+      status: 'connected',
+      events: [],
+      retryAttempt: 0,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendMessage,
+      sendPing: vi.fn().mockReturnValue(true)
+    })
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString()
+
+        if (url.endsWith('/api/v1/users') && !init?.method) {
+          return jsonResponse([])
+        }
+        if (url.endsWith('/api/v1/channels') && !init?.method) {
+          return jsonResponse([])
+        }
+
+        return jsonResponse({ detail: 'Unhandled URL' }, false, 404)
+      })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/API base URL:/).textContent).toContain('http://127.0.0.1:8000')
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Mensaje de prueba'), {
+      target: { value: '   ' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+
+    expect(sendMessage).not.toHaveBeenCalled()
+
+    const messagePostCalls = fetchSpy.mock.calls.filter(([url, init]) =>
+      String(url).includes('/api/v1/channels/') &&
+      String(url).includes('/messages') &&
+      (init as RequestInit | undefined)?.method === 'POST'
+    )
+    expect(messagePostCalls).toHaveLength(0)
+  })
 })
