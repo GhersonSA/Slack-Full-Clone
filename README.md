@@ -9,6 +9,8 @@ Monorepo con backend FastAPI y desktop Electron + React para un MVP tipo Slack.
 - `.github/workflows/ci.yml`: pipeline de validacion en push/PR.
 - `scripts/bootstrap.ps1`: prepara entorno local completo.
 - `scripts/validate.ps1`: ejecuta quality gates locales.
+- `scripts/release-desktop.ps1`: empaqueta desktop y corre smoke checks.
+- `docs/runbooks/desktop-release.md`: runbook de release desktop.
 
 ## Requisitos
 
@@ -47,9 +49,21 @@ Ejecutar todos los checks locales:
 
 Incluye:
 
-- Backend: `pytest tests/test_realtime_flow.py -q`
+- Backend: `pytest tests/test_realtime_flow.py tests/test_end_to_end_user_journey.py -q`
 - Desktop: `npm run test:web`
 - Desktop: `npm run typecheck`
+
+## Desktop Release
+
+Generar release local desktop (unpacked) + smoke checks:
+
+```powershell
+./scripts/release-desktop.ps1
+```
+
+Documentacion operativa completa:
+
+- `docs/runbooks/desktop-release.md`
 
 ## Pipeline CI
 
