@@ -23,10 +23,30 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-4. Run API:
+4. Apply database migrations:
+
+```powershell
+alembic upgrade head
+```
+
+5. Run API:
 
 ```powershell
 uvicorn app.main:app --reload
+```
+
+## Migrations
+
+Create a new migration after model changes:
+
+```powershell
+alembic revision --autogenerate -m "describe_change"
+```
+
+Apply latest migrations:
+
+```powershell
+alembic upgrade head
 ```
 
 ## Architecture

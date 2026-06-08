@@ -3,6 +3,7 @@ backend/.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+backend/*.db
 
 # Node / Electron
 desktop/node_modules/
