@@ -21,3 +21,16 @@ class OutgoingChatMessage(BaseModel):
 class OutgoingSystemEvent(BaseModel):
     type: str
     detail: str
+
+
+class OutgoingPresenceEvent(BaseModel):
+    type: str = Field(default="presence")
+    channel_id: UUID
+    online_count: int
+    online_user_ids: list[UUID]
+
+
+class PresenceRead(BaseModel):
+    channel_id: UUID
+    online_count: int
+    online_user_ids: list[UUID]
