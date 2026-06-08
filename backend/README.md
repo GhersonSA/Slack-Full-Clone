@@ -70,6 +70,7 @@ alembic upgrade head
 - GET /api/v1/channels/{channel_id}/members
 - POST /api/v1/channels/{channel_id}/messages
 - GET /api/v1/channels/{channel_id}/messages
+- GET /api/v1/realtime/channels/{channel_id}/presence
 - WS /api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}
 
 ## Testing
@@ -86,6 +87,7 @@ Current coverage includes:
 - REST message persistence and history retrieval
 - WebSocket membership guard
 - WebSocket happy-path connect and message broadcast
+- Realtime presence endpoint and websocket presence updates
 
 ## WebSocket Contract
 
@@ -116,5 +118,16 @@ Current coverage includes:
 	"author_id": "uuid",
 	"body": "hello team",
 	"created_at": "2026-06-05T18:00:00Z"
+}
+```
+
+- Server presence event:
+
+```json
+{
+	"type": "presence",
+	"channel_id": "uuid",
+	"online_count": 2,
+	"online_user_ids": ["uuid", "uuid"]
 }
 ```

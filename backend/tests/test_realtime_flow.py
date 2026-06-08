@@ -87,8 +87,13 @@ def test_websocket_member_can_connect_and_broadcast_message(client) -> None:
     with client.websocket_connect(
         f"/api/v1/realtime/ws/channels/{channel['id']}?user_id={user['id']}"
     ) as websocket:
-        joined_event = websocket.receive_json()
-        assert joined_event['type'] == 'system'
+        first_event = websocket.receive_json()
+        assert first_event['type'] == 'presence'
+        assert first_event['online_count'] == 1
+        assert user['id'] in first_event['online_user_ids']
+
+        second_event = websocket.receive_json()
+        assert second_event['type'] == 'system'
 
         websocket.send_json({'type': 'message', 'body': 'hello websocket'})
         message_event = websocket.receive_json()
@@ -96,3 +101,29 @@ def test_websocket_member_can_connect_and_broadcast_message(client) -> None:
     assert message_event['type'] == 'message'
     assert message_event['body'] == 'hello websocket'
     assert message_event['author_id'] == user['id']
+
+
+def test_presence_endpoint_reflects_websocket_lifecycle(client) -> None:
+    user = create_user(client, 'lucas', 'Lucas')
+    channel = create_channel(client, 'ops')
+    add_member(client, channel['id'], user['id'])
+
+    empty_presence = client.get(f"/api/v1/realtime/channels/{channel['id']}/presence")
+    assert empty_presence.status_code == status.HTTP_200_OK
+    assert empty_presence.json()['online_count'] == 0
+
+    with client.websocket_connect(
+        f"/api/v1/realtime/ws/channels/{channel['id']}?user_id={user['id']}"
+    ) as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        connected_presence = client.get(f"/api/v1/realtime/channels/{channel['id']}/presence")
+        assert connected_presence.status_code == status.HTTP_200_OK
+        payload = connected_presence.json()
+        assert payload['online_count'] == 1
+        assert user['id'] in payload['online_user_ids']
+
+    disconnected_presence = client.get(f"/api/v1/realtime/channels/{channel['id']}/presence")
+    assert disconnected_presence.status_code == status.HTTP_200_OK
+    assert disconnected_presence.json()['online_count'] == 0
