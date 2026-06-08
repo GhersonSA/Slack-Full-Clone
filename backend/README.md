@@ -48,8 +48,24 @@ uvicorn app.main:app --reload
 - GET /api/v1/channels/{channel_id}
 - POST /api/v1/channels/{channel_id}/members
 - GET /api/v1/channels/{channel_id}/members
+- POST /api/v1/channels/{channel_id}/messages
 - GET /api/v1/channels/{channel_id}/messages
 - WS /api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}
+
+## Testing
+
+Run the focused backend integration suite:
+
+```powershell
+pytest tests/test_realtime_flow.py -q
+```
+
+Current coverage includes:
+
+- REST membership requirement for message fallback
+- REST message persistence and history retrieval
+- WebSocket membership guard
+- WebSocket happy-path connect and message broadcast
 
 ## WebSocket Contract
 
