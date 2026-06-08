@@ -25,6 +25,12 @@ export interface Message {
   created_at: string
 }
 
+export interface Presence {
+  channel_id: string
+  online_count: number
+  online_user_ids: string[]
+}
+
 export interface CreateUserPayload {
   username: string
   display_name: string

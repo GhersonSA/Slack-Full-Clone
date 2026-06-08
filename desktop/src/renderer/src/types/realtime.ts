@@ -12,4 +12,11 @@ export interface ChatEventSystem {
   detail: string
 }
 
-export type ChatEvent = ChatEventMessage | ChatEventSystem
+export interface ChatEventPresence {
+  type: 'presence'
+  channel_id: string
+  online_count: number
+  online_user_ids: string[]
+}
+
+export type ChatEvent = ChatEventMessage | ChatEventSystem | ChatEventPresence

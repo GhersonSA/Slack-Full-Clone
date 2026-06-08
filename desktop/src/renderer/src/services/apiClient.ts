@@ -6,6 +6,7 @@ import type {
   CreateMessagePayload,
   CreateUserPayload,
   Message,
+  Presence,
   User
 } from '@renderer/types/api'
 
@@ -80,5 +81,9 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload)
     })
+  }
+
+  getPresence(channelId: string): Promise<Presence> {
+    return requestJson<Presence>(this.api(`/realtime/channels/${channelId}/presence`))
   }
 }
