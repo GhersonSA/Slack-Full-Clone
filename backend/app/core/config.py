@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "Slack Clone API"
     environment: str = "development"
     debug: bool = True
+    log_level: str = "INFO"
 
     api_v1_prefix: str = "/api/v1"
 

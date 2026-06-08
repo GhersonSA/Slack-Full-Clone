@@ -87,6 +87,12 @@ Run the end-to-end user journey suite (happy path + error path):
 pytest tests/test_end_to_end_user_journey.py -q
 ```
 
+Run observability suite (request-id headers + error traceability):
+
+```powershell
+pytest tests/test_observability.py -q
+```
+
 Current coverage includes:
 
 - REST membership requirement for message fallback
@@ -95,6 +101,14 @@ Current coverage includes:
 - WebSocket happy-path connect and message broadcast
 - Realtime presence endpoint and websocket presence updates
 - End-to-end flow from user/channel bootstrap to chat history and error guards
+- Request correlation with `X-Request-ID` and error payload traceability
+
+## Observability
+
+- Every HTTP response includes `X-Request-ID`.
+- If client sends `X-Request-ID`, backend echoes the same value.
+- Error responses include `request_id` in payload for incident correlation.
+- `LOG_LEVEL` env var controls backend logging verbosity.
 
 ## WebSocket Contract
 

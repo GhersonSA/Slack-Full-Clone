@@ -11,6 +11,7 @@ Monorepo con backend FastAPI y desktop Electron + React para un MVP tipo Slack.
 - `scripts/validate.ps1`: ejecuta quality gates locales.
 - `scripts/release-desktop.ps1`: empaqueta desktop y corre smoke checks.
 - `docs/runbooks/desktop-release.md`: runbook de release desktop.
+- `docs/runbooks/backend-incident-first-response.md`: guia L1 para incidentes backend.
 
 ## Requisitos
 
@@ -49,7 +50,7 @@ Ejecutar todos los checks locales:
 
 Incluye:
 
-- Backend: `pytest tests/test_realtime_flow.py tests/test_end_to_end_user_journey.py -q`
+- Backend: `pytest tests/test_realtime_flow.py tests/test_end_to_end_user_journey.py tests/test_observability.py -q`
 - Desktop: `npm run test:web`
 - Desktop: `npm run typecheck`
 
@@ -64,6 +65,13 @@ Generar release local desktop (unpacked) + smoke checks:
 Documentacion operativa completa:
 
 - `docs/runbooks/desktop-release.md`
+
+## Backend Observability
+
+- Correlacion por `X-Request-ID` en todas las respuestas HTTP.
+- Error payloads con `request_id` para trazabilidad operativa.
+- Guia de primer nivel para incidentes en:
+	- `docs/runbooks/backend-incident-first-response.md`
 
 ## Pipeline CI
 
