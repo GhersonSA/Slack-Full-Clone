@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { useChannelWebSocket } from '@renderer/hooks/useChannelWebSocket'
 import { ApiClient } from '@renderer/services/apiClient'
-import type { Channel, Message, User } from '@renderer/types/api'
+import type { Channel, Message, Presence, User } from '@renderer/types/api'
+import type { ChatEventPresence } from '@renderer/types/realtime'
 
 function App(): React.JSX.Element {
   const [apiInfo, setApiInfo] = useState('Loading runtime info...')
@@ -18,6 +19,7 @@ function App(): React.JSX.Element {
   const [users, setUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [historyMessages, setHistoryMessages] = useState<Message[]>([])
+  const [restPresence, setRestPresence] = useState<Presence | null>(null)
   const [feedback, setFeedback] = useState('')
 
   const apiClient = useMemo(() => {
@@ -63,6 +65,40 @@ function App(): React.JSX.Element {
       channelId,
       userId
     })
+
+  const refreshPresence = async (targetChannelId: string): Promise<void> => {
+    if (!apiClient || !targetChannelId) {
+      setRestPresence(null)
+      return
+    }
+
+    try {
+      const payload = await apiClient.getPresence(targetChannelId)
+      setRestPresence(payload)
+    } catch {
+      setRestPresence(null)
+    }
+  }
+
+  const websocketPresence = useMemo(() => {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index]
+      if (event.type === 'presence') {
+        const presenceEvent = event as ChatEventPresence
+        if (!channelId || presenceEvent.channel_id === channelId) {
+          return {
+            channel_id: presenceEvent.channel_id,
+            online_count: presenceEvent.online_count,
+            online_user_ids: presenceEvent.online_user_ids
+          } satisfies Presence
+        }
+      }
+    }
+
+    return null
+  }, [events, channelId])
+
+  const currentPresence = websocketPresence ?? restPresence
 
   const handleSendMessage = async (): Promise<void> => {
     if (!draftMessage.trim()) {
@@ -147,6 +183,7 @@ function App(): React.JSX.Element {
     try {
       await apiClient.addMemberToChannel(channelId, { user_id: userId })
       setFeedback('Usuario agregado al canal')
+      await refreshPresence(channelId)
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No fue posible unir usuario al canal')
     }
@@ -268,7 +305,10 @@ function App(): React.JSX.Element {
                 </span>
                 <button
                   className="rounded border border-slate-300 px-2 py-1"
-                  onClick={() => setChannelId(item.id)}
+                  onClick={() => {
+                    setChannelId(item.id)
+                    void refreshPresence(item.id)
+                  }}
                 >
                   Usar ID
                 </button>
@@ -285,7 +325,11 @@ function App(): React.JSX.Element {
           <input
             className="rounded border border-slate-300 px-3 py-2"
             value={channelId}
-            onChange={(event) => setChannelId(event.target.value)}
+            onChange={(event) => {
+              const nextChannelId = event.target.value
+              setChannelId(nextChannelId)
+              void refreshPresence(nextChannelId)
+            }}
             placeholder="UUID del canal"
           />
         </label>
@@ -341,6 +385,10 @@ function App(): React.JSX.Element {
 
         <p className="text-sm">Estado del socket: {status}</p>
         <p className="text-sm">Intentos de reconexión: {retryAttempt}</p>
+        <p className="text-sm">Online en canal: {currentPresence?.online_count ?? 0}</p>
+        <p className="text-sm break-all">
+          Usuarios online: {currentPresence?.online_user_ids?.join(', ') || 'Sin usuarios online'}
+        </p>
       </section>
 
       <section className="grid gap-3 rounded border border-slate-200 p-4">
