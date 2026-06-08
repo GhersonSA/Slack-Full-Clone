@@ -36,7 +36,7 @@ jobs:
         run: alembic upgrade head
 
       - name: Run backend integration tests
-        run: pytest tests/test_realtime_flow.py -q
+        run: pytest tests/test_realtime_flow.py tests/test_end_to_end_user_journey.py -q
 
   desktop-tests:
     name: Desktop tests + typecheck

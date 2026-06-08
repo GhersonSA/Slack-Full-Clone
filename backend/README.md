@@ -81,6 +81,12 @@ Run the focused backend integration suite:
 pytest tests/test_realtime_flow.py -q
 ```
 
+Run the end-to-end user journey suite (happy path + error path):
+
+```powershell
+pytest tests/test_end_to_end_user_journey.py -q
+```
+
 Current coverage includes:
 
 - REST membership requirement for message fallback
@@ -88,6 +94,7 @@ Current coverage includes:
 - WebSocket membership guard
 - WebSocket happy-path connect and message broadcast
 - Realtime presence endpoint and websocket presence updates
+- End-to-end flow from user/channel bootstrap to chat history and error guards
 
 ## WebSocket Contract
 

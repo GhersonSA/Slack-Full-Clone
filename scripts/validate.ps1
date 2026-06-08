@@ -11,7 +11,7 @@ if (!(Test-Path $venvPython)) {
 
 Write-Host '[validate] Ejecutando backend tests...'
 Set-Location $backendPath
-& $venvPython -m pytest tests/test_realtime_flow.py -q
+& $venvPython -m pytest tests/test_realtime_flow.py tests/test_end_to_end_user_journey.py -q
 
 Write-Host '[validate] Ejecutando desktop tests...'
 Set-Location $desktopPath
