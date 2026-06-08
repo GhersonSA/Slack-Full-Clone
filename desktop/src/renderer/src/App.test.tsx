@@ -298,4 +298,111 @@ describe('App', () => {
       })
     )
   })
+
+  it('shows backend detail when join channel request fails', async () => {
+    mockedUseChannelWebSocket.mockReturnValue({
+      status: 'disconnected',
+      events: [],
+      retryAttempt: 0,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendMessage: vi.fn().mockReturnValue(false),
+      sendPing: vi.fn().mockReturnValue(false)
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/v1/users') && !init?.method) {
+        return jsonResponse([])
+      }
+      if (url.endsWith('/api/v1/channels') && !init?.method) {
+        return jsonResponse([])
+      }
+      if (url.endsWith('/api/v1/channels/channel-join-error/members') && init?.method === 'POST') {
+        return jsonResponse({ detail: 'User is not allowed in this channel' }, false, 403)
+      }
+      if (url.endsWith('/api/v1/realtime/channels/channel-join-error/presence') && !init?.method) {
+        return jsonResponse({
+          channel_id: 'channel-join-error',
+          online_count: 0,
+          online_user_ids: []
+        })
+      }
+
+      return jsonResponse({ detail: 'Unhandled URL' }, false, 404)
+    })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/API base URL:/).textContent).toContain('http://127.0.0.1:8000')
+    })
+
+    fireEvent.change(screen.getAllByPlaceholderText('UUID del canal')[0], {
+      target: { value: 'channel-join-error' }
+    })
+    fireEvent.change(screen.getAllByPlaceholderText('UUID del usuario')[0], {
+      target: { value: 'user-join-error' }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unir usuario al canal' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('User is not allowed in this channel')).toBeTruthy()
+    })
+  })
+
+  it('shows backend detail when load history request fails', async () => {
+    mockedUseChannelWebSocket.mockReturnValue({
+      status: 'connected',
+      events: [],
+      retryAttempt: 0,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendMessage: vi.fn().mockReturnValue(true),
+      sendPing: vi.fn().mockReturnValue(true)
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/v1/users') && !init?.method) {
+        return jsonResponse([])
+      }
+      if (url.endsWith('/api/v1/channels') && !init?.method) {
+        return jsonResponse([])
+      }
+      if (url.endsWith('/api/v1/realtime/channels/channel-history-error/presence') && !init?.method) {
+        return jsonResponse({
+          channel_id: 'channel-history-error',
+          online_count: 0,
+          online_user_ids: []
+        })
+      }
+      if (url.endsWith('/api/v1/channels/channel-history-error/messages') && !init?.method) {
+        return jsonResponse({ detail: 'History unavailable' }, false, 500)
+      }
+
+      return jsonResponse({ detail: 'Unhandled URL' }, false, 404)
+    })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/API base URL:/).textContent).toContain('http://127.0.0.1:8000')
+    })
+
+    fireEvent.change(screen.getAllByPlaceholderText('UUID del canal')[0], {
+      target: { value: 'channel-history-error' }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar historial REST' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('History unavailable')).toBeTruthy()
+    })
+
+    expect(screen.getByText('No hay historial cargado.')).toBeTruthy()
+  })
 })
