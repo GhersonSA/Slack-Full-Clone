@@ -3,6 +3,7 @@ import type {
   Channel,
   ChannelMember,
   CreateChannelPayload,
+  CreateMessagePayload,
   CreateUserPayload,
   Message,
   User
@@ -72,5 +73,12 @@ export class ApiClient {
 
   listMessages(channelId: string): Promise<Message[]> {
     return requestJson<Message[]>(this.api(`/channels/${channelId}/messages`))
+  }
+
+  createMessage(channelId: string, payload: CreateMessagePayload): Promise<Message> {
+    return requestJson<Message>(this.api(`/channels/${channelId}/messages`), {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
   }
 }

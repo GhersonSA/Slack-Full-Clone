@@ -57,18 +57,43 @@ function App(): React.JSX.Element {
     return wsBaseUrl.length > 0 && channelId.length > 0 && userId.length > 0
   }, [wsBaseUrl, channelId, userId])
 
-  const { status, events, connect, disconnect, sendMessage, sendPing } = useChannelWebSocket({
-    wsBaseUrl,
-    channelId,
-    userId
-  })
+  const { status, events, retryAttempt, connect, disconnect, sendMessage, sendPing } =
+    useChannelWebSocket({
+      wsBaseUrl,
+      channelId,
+      userId
+    })
 
-  const handleSendMessage = (): void => {
+  const handleSendMessage = async (): Promise<void> => {
     if (!draftMessage.trim()) {
       return
     }
 
-    sendMessage(draftMessage.trim())
+    const messageBody = draftMessage.trim()
+    const sentOverWebSocket = sendMessage(messageBody)
+
+    if (!sentOverWebSocket) {
+      if (!apiClient || !channelId || !userId) {
+        setFeedback('Socket no disponible y faltan datos para fallback REST')
+        return
+      }
+
+      try {
+        await apiClient.createMessage(channelId, {
+          author_id: userId,
+          body: messageBody
+        })
+        setFeedback('Mensaje enviado por fallback REST')
+        const history = await apiClient.listMessages(channelId)
+        setHistoryMessages(history)
+      } catch (error) {
+        setFeedback(error instanceof Error ? error.message : 'No fue posible enviar el mensaje')
+        return
+      }
+    } else {
+      setFeedback('Mensaje enviado por WebSocket')
+    }
+
     setDraftMessage('')
   }
 
@@ -301,12 +326,21 @@ function App(): React.JSX.Element {
           >
             Desconectar
           </button>
-          <button className="rounded border border-slate-400 px-3 py-2 text-sm" onClick={sendPing}>
+          <button
+            className="rounded border border-slate-400 px-3 py-2 text-sm"
+            onClick={() => {
+              const pingSent = sendPing()
+              setFeedback(
+                pingSent ? 'Ping enviado por WebSocket' : 'Ping omitido: socket no conectado'
+              )
+            }}
+          >
             Ping
           </button>
         </div>
 
         <p className="text-sm">Estado del socket: {status}</p>
+        <p className="text-sm">Intentos de reconexión: {retryAttempt}</p>
       </section>
 
       <section className="grid gap-3 rounded border border-slate-200 p-4">
@@ -320,7 +354,9 @@ function App(): React.JSX.Element {
           />
           <button
             className="rounded border border-slate-400 px-3 py-2 text-sm"
-            onClick={handleSendMessage}
+            onClick={() => {
+              void handleSendMessage()
+            }}
           >
             Enviar
           </button>

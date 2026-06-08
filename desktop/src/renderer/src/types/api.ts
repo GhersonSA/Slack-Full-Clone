@@ -22,6 +22,7 @@ export interface Message {
   channel_id: string
   author_id: string
   body: string
+  created_at: string
 }
 
 export interface CreateUserPayload {
@@ -37,4 +38,9 @@ export interface CreateChannelPayload {
 
 export interface AddChannelMemberPayload {
   user_id: string
+}
+
+export interface CreateMessagePayload {
+  author_id: string
+  body: string
 }
