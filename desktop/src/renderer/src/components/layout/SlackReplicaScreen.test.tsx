@@ -14,7 +14,7 @@ describe('SlackReplicaScreen', () => {
     expect(screen.getAllByText('Fiktion GmbH').length).toBeGreaterThan(0)
     expect(screen.getByText('#soziale-medien')).toBeTruthy()
     expect(screen.getByText('Soziale Medien verfolgen und koordinieren')).toBeTruthy()
-    expect(screen.getByText('Nachricht an #soziale-medien')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Nachricht an #soziale-medien')).toBeTruthy()
   })
 
   it('renders key sidebar groups and active channel item', () => {

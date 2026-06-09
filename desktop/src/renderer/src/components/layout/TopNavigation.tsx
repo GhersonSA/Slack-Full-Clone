@@ -50,46 +50,48 @@ function TopNavigation({
   return (
     <div
       className={[
-        'flex h-full items-center bg-[var(--slack-topbar)] text-[#E9DDEA]',
+        'grid h-full grid-cols-[auto_1fr_auto] items-center border-b border-white/10 bg-[var(--slack-topbar)] text-[#E9DDEA]',
         isCompact ? 'gap-2 px-3' : 'gap-3 px-4'
       ].join(' ')}
     >
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Open menu">
-        <span className="block h-0.5 w-4 bg-current" />
-        <span className="mt-1 block h-0.5 w-4 bg-current" />
-        <span className="mt-1 block h-0.5 w-4 bg-current" />
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Main menu">
+          ☰
+        </button>
+        <span className="mx-1 h-4 w-px bg-white/20" aria-hidden="true" />
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go back">
+          ←
+        </button>
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go forward">
+          →
+        </button>
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="History">
+          🕒
+        </button>
+      </div>
 
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go back">
-        ←
-      </button>
-
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go forward">
-        →
-      </button>
-
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="History">
-        ◷
-      </button>
-
-      <div className="w-full max-w-xl">
-        <div className="flex h-7 items-center rounded-md border border-white/15 bg-white/10 px-2 text-xs text-[#E9DDEA] shadow-inner shadow-black/10">
+      <div className="mx-auto w-full max-w-[620px]">
+        <div className="flex h-7 items-center rounded-md border border-white/20 bg-white/12 px-2.5 text-[12px] text-[#E9DDEA] shadow-inner shadow-black/15">
           <span className="mr-2 text-[#CBBED0]">⌕</span>
-          <span className="truncate opacity-85">{searchPlaceholder}</span>
+          <span className="truncate opacity-95">{searchPlaceholder}</span>
+          <span className="sr-only">{workspaceName}</span>
         </div>
       </div>
-
-      <div className="hidden min-w-0 items-center gap-2 text-xs text-[#CBBED0] md:flex">
-        <span className="truncate">{workspaceName}</span>
-      </div>
-
-      <button className="rounded-full p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Help">
-        ?
-      </button>
-
-      <div className="ml-auto flex items-center">
-        <div className="flex -space-x-2">
-          {memberAvatars.map((avatar) => (
+      <div className="ml-auto flex items-center gap-1">
+        <button className="rounded-full p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Help">
+          ⍰
+        </button>
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Minimize">
+          −
+        </button>
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Maximize">
+          □
+        </button>
+        <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Close">
+          ×
+        </button>
+        <div className="ml-1 hidden items-center -space-x-2 xl:flex">
+          {memberAvatars.slice(0, 2).map((avatar) => (
             <AvatarStackItem key={avatar.id} avatar={avatar} />
           ))}
         </div>

@@ -28,13 +28,15 @@ function WorkspaceSwitcher({
             className={[
               'relative flex items-center justify-center rounded-xl text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]',
               isCompact ? 'h-10 w-10' : 'h-11 w-11',
-              isActive ? 'ring-2 ring-white/40 shadow-lg shadow-black/30' : 'opacity-80 hover:opacity-100'
+              isActive
+                ? 'ring-2 ring-white/35 shadow-lg shadow-black/30'
+                : 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
             ].join(' ')}
             style={{ backgroundColor: workspace.accentColor ?? '#0E7A9E' }}
           >
             {workspace.shortName}
             {isActive ? (
-              <span className="absolute -left-3 h-6 w-1 rounded-r bg-white" aria-hidden="true" />
+              <span className="absolute -left-3 h-5 w-1 rounded-r bg-white" aria-hidden="true" />
             ) : null}
           </button>
         )

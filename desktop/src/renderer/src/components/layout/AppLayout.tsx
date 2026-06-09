@@ -5,6 +5,7 @@ import type {
   AvatarItem,
   ChannelTab,
   ChatMessage,
+  ChatInfoPanel,
   ChatNoticeCard,
   ComposerTool,
   LayoutDensity,
@@ -26,9 +27,15 @@ type AppLayoutProps = {
   channelTabs: ChannelTab[]
   notices: ChatNoticeCard[]
   composerTools: ComposerTool[]
+  infoPanel?: ChatInfoPanel
   density?: LayoutDensity
   sidebarCollapsed?: boolean
   hideWorkspaceRailOnNarrow?: boolean
+  draftMessage?: string
+  onDraftMessageChange?: (value: string) => void
+  onSendMessage?: () => void
+  onSidebarItemSelect?: (sectionId: string, itemId: string) => void
+  onQuickCreateChannel?: () => void
 }
 
 function AppLayout({
@@ -44,9 +51,15 @@ function AppLayout({
   channelTabs,
   notices,
   composerTools,
+  infoPanel,
   density = 'comfortable',
   sidebarCollapsed = false,
-  hideWorkspaceRailOnNarrow = true
+  hideWorkspaceRailOnNarrow = true,
+  draftMessage,
+  onDraftMessageChange,
+  onSendMessage,
+  onSidebarItemSelect,
+  onQuickCreateChannel
 }: AppLayoutProps): React.JSX.Element {
   const isCompact = density === 'compact'
 
@@ -84,6 +97,8 @@ function AppLayout({
               sections={sidebarSections}
               density={density}
               collapsed={sidebarCollapsed}
+              onItemSelect={onSidebarItemSelect}
+              onCompose={onQuickCreateChannel}
             />
           </aside>
 
@@ -96,7 +111,11 @@ function AppLayout({
               tabs={channelTabs}
               notices={notices}
               composerTools={composerTools}
+              infoPanel={infoPanel}
               density={density}
+              draftMessage={draftMessage}
+              onDraftMessageChange={onDraftMessageChange}
+              onSendMessage={onSendMessage}
             />
           </main>
         </div>

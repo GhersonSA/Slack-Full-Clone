@@ -1,31 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Noto+Sans:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  --slack-topbar: #2c0d2e;
-  --slack-workspace-rail: #31103f;
-  --slack-sidebar: #3f0e40;
-  --slack-active: #1164a3;
+  --slack-topbar: #32123f;
+  --slack-workspace-rail: #2f0f3a;
+  --slack-sidebar: #411247;
+  --slack-sidebar-hover: #5f2664;
+  --slack-active: #1264a3;
   --slack-canvas: #ffffff;
   --slack-ink: #1d1c1d;
   --slack-muted: #616061;
-  --slack-line: #e6e6e6;
-  --slack-soft: #f8f8f9;
+  --slack-line: #dfdfe1;
+  --slack-soft: #f8f8f8;
   --slack-focus-ring: #9fd9ff;
+  --slack-info-bg: #f8f8f8;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Lato', 'Noto Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: var(--slack-ink);
   background: var(--slack-sidebar);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
 #root {
   min-height: 100vh;
+  -webkit-app-region: no-drag;
+}
+
+button,
+input,
+textarea,
+select,
+a,
+[role='button'] {
+  -webkit-app-region: no-drag;
+  pointer-events: auto;
+}
+
+button {
+  cursor: pointer;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c8c8c8 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #c8c8c8;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

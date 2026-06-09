@@ -1,4 +1,11 @@
-import type { ChannelTab, ChatMessage, ChatNoticeCard, ComposerTool, LayoutDensity } from './types'
+import type {
+  ChannelTab,
+  ChatInfoPanel,
+  ChatMessage,
+  ChatNoticeCard,
+  ComposerTool,
+  LayoutDensity
+} from './types'
 
 type ChatAreaProps = {
   channelName: string
@@ -8,13 +15,17 @@ type ChatAreaProps = {
   tabs: ChannelTab[]
   notices: ChatNoticeCard[]
   composerTools: ComposerTool[]
+  infoPanel?: ChatInfoPanel
   density?: LayoutDensity
+  draftMessage?: string
+  onDraftMessageChange?: (value: string) => void
+  onSendMessage?: () => void
 }
 
 function MessageAvatar({ message }: { message: ChatMessage }): React.JSX.Element {
   return (
     <div
-      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded text-xs font-semibold text-white"
+      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xs font-semibold text-white"
       style={{ backgroundColor: message.accentColor ?? '#2D9CDB' }}
       aria-label={message.author}
     >
@@ -31,22 +42,28 @@ function ChatArea({
   tabs,
   notices,
   composerTools,
-  density = 'comfortable'
+  infoPanel,
+  density = 'comfortable',
+  draftMessage,
+  onDraftMessageChange,
+  onSendMessage
 }: ChatAreaProps): React.JSX.Element {
   const isCompact = density === 'compact'
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-[var(--slack-canvas)] text-[var(--slack-ink)]">
-      <header className={['shrink-0 border-b border-[var(--slack-line)]', isCompact ? 'px-4 pt-1.5' : 'px-6 pt-2'].join(' ')}>
-        <div className="flex h-10 items-center justify-between">
-          <div className="min-w-0">
-            <p className="truncate text-[25px] font-bold leading-none">#{channelName}</p>
-            <p className="truncate text-sm text-[var(--slack-muted)]">{channelDescription}</p>
+    <div className="flex h-full min-w-0 bg-[var(--slack-canvas)] text-[var(--slack-ink)]">
+      <section className="flex min-w-0 flex-1 flex-col">
+      <header className={['shrink-0 border-b border-[var(--slack-line)] bg-white', isCompact ? 'px-4 py-1.5' : 'px-5 py-2'].join(' ')}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[22px] font-black leading-none tracking-tight">#{channelName} <span className="text-[15px] text-[#868686]">★</span></p>
+            <p className="mt-0.5 break-words text-[13px] leading-5 text-[var(--slack-muted)]">{channelDescription}</p>
+                  <p className="mt-0.5 break-words text-[11px] text-[var(--slack-muted)]">8 21 • seguimiento de features, despliegues y calidad del equipo developer</p>
           </div>
 
-          <div className="flex items-center gap-1 text-[var(--slack-muted)]">
+          <div className="mt-0.5 flex items-center gap-1 text-[var(--slack-muted)]">
             <button className="rounded p-1.5 hover:bg-[var(--slack-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Channel members">
-              👥
+              ☰
             </button>
             <button className="rounded p-1.5 hover:bg-[var(--slack-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Channel info">
               ⓘ
@@ -54,7 +71,7 @@ function ChatArea({
           </div>
         </div>
 
-        <nav className={['flex items-center gap-1 overflow-x-auto text-[13px]', isCompact ? 'h-8' : 'h-9'].join(' ')}>
+        <nav className={['flex items-center gap-1 overflow-x-auto text-[12px]', isCompact ? 'h-8' : 'h-9'].join(' ')}>
           {tabs.map((tab) => {
             const isActive = tab.isActive ?? false
 
@@ -76,7 +93,7 @@ function ChatArea({
         </nav>
       </header>
 
-      <div className={['min-h-0 flex-1 overflow-y-auto', isCompact ? 'px-4 py-3' : 'px-6 py-4'].join(' ')}>
+      <div className={['min-h-0 flex-1 overflow-y-auto', isCompact ? 'px-4 py-3' : 'px-5 py-4'].join(' ')}>
         {notices.length > 0 ? (
           <ul className="mb-4 space-y-2">
             {notices.map((notice) => (
@@ -125,13 +142,25 @@ function ChatArea({
         </ul>
       </div>
 
-      <footer className={['border-t border-[var(--slack-line)]', isCompact ? 'px-4 py-2.5' : 'px-6 py-3'].join(' ')}>
-        <div className="rounded-md border border-[#CFCFD0] shadow-sm shadow-black/5">
-          <div className="flex h-12 items-center px-3 text-[var(--slack-muted)]">
-            <span className="truncate">{composerPlaceholder}</span>
+      <footer className={['border-t border-[var(--slack-line)] bg-white', isCompact ? 'px-4 py-2.5' : 'px-5 py-3'].join(' ')}>
+        <div className="rounded-md border border-[#CFCFD0] bg-white shadow-sm shadow-black/5">
+          <div className="flex h-10 items-center px-3 text-[var(--slack-muted)]">
+            <input
+              aria-label="Message composer"
+              className="w-full bg-transparent text-sm text-[var(--slack-ink)] placeholder:text-[var(--slack-muted)] focus:outline-none"
+              placeholder={composerPlaceholder}
+              value={draftMessage ?? ''}
+              onChange={(event) => onDraftMessageChange?.(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  onSendMessage?.()
+                }
+              }}
+            />
           </div>
 
-          <div className="flex items-center justify-between border-t border-[var(--slack-line)] px-2 py-1.5 text-[var(--slack-muted)]">
+          <div className="flex items-center justify-between border-t border-[var(--slack-line)] px-2 py-1 text-[var(--slack-muted)]">
             <div className="flex items-center gap-1">
               {composerTools.map((tool) => (
                 <button
@@ -154,10 +183,74 @@ function ChatArea({
               <button aria-label="Attach" className="rounded p-1.5 hover:bg-[var(--slack-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]">
                 📎
               </button>
+              <button
+                aria-label="Send message"
+                onClick={onSendMessage}
+                className="rounded bg-[#1D9BD1] px-2 py-1 text-xs font-semibold text-white hover:bg-[#1686B7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]"
+              >
+                Enviar
+              </button>
             </div>
           </div>
         </div>
       </footer>
+      </section>
+
+      {infoPanel ? (
+        <aside className="hidden w-[320px] shrink-0 border-l border-[var(--slack-line)] bg-[var(--slack-info-bg)] lg:block">
+          <header className="flex items-start justify-between border-b border-[var(--slack-line)] px-4 py-3">
+            <div>
+              <p className="text-lg font-semibold">Información</p>
+              {infoPanel.subtitle ? (
+                <p className="text-xs text-[var(--slack-muted)]">{infoPanel.subtitle}</p>
+              ) : null}
+            </div>
+            <button aria-label="Close info panel" className="rounded p-1 hover:bg-[var(--slack-soft)]">
+              ✕
+            </button>
+          </header>
+
+          <div className="space-y-5 px-4 py-4">
+            <div className="grid grid-cols-4 gap-2 text-center text-xs text-[var(--slack-muted)]">
+              {infoPanel.actions.map((action) => (
+                <button key={action.id} className="rounded border border-[var(--slack-line)] bg-white px-2 py-2 hover:bg-[var(--slack-soft)]">
+                  <div className="text-sm">{action.icon}</div>
+                  <div className="mt-1 truncate">{action.label}</div>
+                </button>
+              ))}
+            </div>
+
+            <section>
+              <p className="text-sm font-semibold">Acerca de</p>
+              <div className="mt-2 space-y-3 text-sm">
+                <div>
+                  <p className="text-xs text-[var(--slack-muted)]">Tema</p>
+                  <p>{infoPanel.aboutTopic}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--slack-muted)]">Descripción</p>
+                  <p>{infoPanel.aboutDescription}</p>
+                </div>
+                {infoPanel.createdAtLabel ? (
+                  <div className="rounded border border-[var(--slack-line)] bg-white px-2 py-1.5 text-xs text-[var(--slack-muted)]">
+                    {infoPanel.createdAtLabel}
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="flex items-center justify-between border-t border-[var(--slack-line)] pt-3 text-sm">
+              <p className="font-semibold">Miembros</p>
+              <p className="text-[var(--slack-muted)]">{infoPanel.membersCount}</p>
+            </section>
+
+            <section className="flex items-center justify-between border-t border-[var(--slack-line)] pt-3 text-sm">
+              <p className="font-semibold">Organizaciones</p>
+              <p className="text-[var(--slack-muted)]">{infoPanel.organizationsCount ?? 1}</p>
+            </section>
+          </div>
+        </aside>
+      ) : null}
     </div>
   )
 }

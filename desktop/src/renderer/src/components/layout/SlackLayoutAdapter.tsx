@@ -15,6 +15,11 @@ type SlackLayoutAdapterProps = {
   feedback: string
   density?: 'compact' | 'comfortable'
   sidebarCollapsed?: boolean
+  draftMessage?: string
+  onDraftMessageChange?: (value: string) => void
+  onSendMessage?: () => void
+  onSidebarItemSelect?: (sectionId: string, itemId: string) => void
+  onQuickCreateChannel?: () => void
 }
 
 function SlackLayoutAdapter(props: SlackLayoutAdapterProps): React.JSX.Element {

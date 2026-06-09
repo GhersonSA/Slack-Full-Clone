@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useChannelWebSocket } from '@renderer/hooks/useChannelWebSocket'
 import { ApiClient } from '@renderer/services/apiClient'
@@ -21,6 +21,15 @@ type DesktopApiBridge = {
   }>
 }
 
+type ElectronIpcBridge = {
+  ipcRenderer?: {
+    invoke?: (channel: string) => Promise<unknown>
+  }
+}
+
+const LOCAL_PRIMARY_USERNAME = 'gherson.sanchez'
+const LOCAL_PRIMARY_DISPLAY_NAME = 'Gherson Sánchez'
+
 function App(): React.JSX.Element {
   const [apiInfo, setApiInfo] = useState('Loading runtime info...')
   const [apiBaseUrl, setApiBaseUrl] = useState('')
@@ -35,11 +44,22 @@ function App(): React.JSX.Element {
   const [users, setUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [historyMessages, setHistoryMessages] = useState<Message[]>([])
+  const [localMessagesByChannel, setLocalMessagesByChannel] = useState<Record<string, Message[]>>({})
   const [restPresence, setRestPresence] = useState<Presence | null>(null)
   const [feedback, setFeedback] = useState('')
+  const [sessionStatus, setSessionStatus] = useState('')
   const [runtimeMode, setRuntimeMode] = useState<'desktop' | 'web'>('desktop')
+  const didBootstrapChatRef = useRef(false)
+  const didSeedLocalFallbackRef = useRef(false)
 
   const layoutMode = import.meta.env.VITE_LAYOUT_MODE
+  const isElectronRuntime = useMemo(() => {
+    if (typeof navigator === 'undefined') {
+      return false
+    }
+
+    return navigator.userAgent.includes('Electron')
+  }, [])
 
   const apiClient = useMemo(() => {
     if (!apiBaseUrl) {
@@ -54,21 +74,65 @@ function App(): React.JSX.Element {
     setChannels(nextChannels)
   }
 
-  const syncCatalogsWithStatus = async (client: ApiClient, mode: 'desktop' | 'web'): Promise<void> => {
+  const makeLocalId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+
+  const cacheChannelMessages = (targetChannelId: string, messages: Message[]): void => {
+    setLocalMessagesByChannel((current) => ({
+      ...current,
+      [targetChannelId]: messages
+    }))
+  }
+
+  const toOperationalError = (error: unknown, fallback: string): string => {
+    if (error instanceof Error) {
+      const message = error.message.trim()
+      if (message.toLowerCase().includes('failed to fetch')) {
+        return 'Sin conexión con backend. Se activó modo local para continuar.'
+      }
+      return message || fallback
+    }
+    return fallback
+  }
+
+  const syncCatalogsWithStatus = async (
+    client: ApiClient,
+    mode: 'desktop' | 'web',
+    apiBaseUrlForHealth: string
+  ): Promise<void> => {
     try {
       await refreshCatalogs(client)
       if (mode === 'web') {
-        setFeedback('Estado de la sesión actual: modo web (sin bridge de Electron)')
+        setSessionStatus('Estado de la sesión actual: modo web (sin bridge de Electron)')
       } else {
-        setFeedback('Estado de la sesión actual: desktop conectado')
+        setSessionStatus('Estado de la sesión actual: desktop conectado')
       }
     } catch {
       setUsers([])
       setChannels([])
+
+      let backendHealthy = false
+      try {
+        const healthResponse = await fetch(`${apiBaseUrlForHealth.replace(/\/$/, '')}/api/v1/health`)
+        backendHealthy = healthResponse.ok
+      } catch {
+        backendHealthy = false
+      }
+
+      if (backendHealthy) {
+        if (mode === 'web') {
+          setSessionStatus(
+            'Estado de la sesión actual: modo web, backend conectado (sincronización pendiente)'
+          )
+        } else {
+          setSessionStatus('Estado de la sesión actual: desktop conectado (sincronización pendiente)')
+        }
+        return
+      }
+
       if (mode === 'web') {
-        setFeedback('Estado de la sesión actual: modo web, backend no disponible')
+        setSessionStatus('Estado de la sesión actual: modo web, backend no disponible')
       } else {
-        setFeedback('Estado de la sesión actual: desktop conectado, backend no disponible')
+        setSessionStatus('Estado de la sesión actual: desktop conectado, backend no disponible')
       }
     }
   }
@@ -76,54 +140,89 @@ function App(): React.JSX.Element {
   useEffect(() => {
     const loadDesktopContext = async (): Promise<void> => {
       const bridge = (window as Window & { api?: DesktopApiBridge }).api
+      const electronBridge = (window as Window & { electron?: ElectronIpcBridge }).electron
+      const invokeFromElectron = electronBridge?.ipcRenderer?.invoke
 
-      if (!bridge?.getAppInfo || !bridge?.getRuntimeConfig) {
-        setRuntimeMode('web')
-        const fallbackApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
-        const fallbackWsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? DEFAULT_WS_BASE_URL
+      if (bridge?.getAppInfo && bridge?.getRuntimeConfig) {
+        setRuntimeMode('desktop')
 
-        setApiInfo('Slack Full Clone vdev | Electron bridge no disponible')
-        setApiBaseUrl(fallbackApiBaseUrl)
-        setWsBaseUrl(fallbackWsBaseUrl)
-        const fallbackClient = new ApiClient(fallbackApiBaseUrl)
-        await syncCatalogsWithStatus(fallbackClient, 'web')
+        const [info, runtime] = await Promise.all([
+          bridge.getAppInfo(),
+          bridge.getRuntimeConfig()
+        ])
+
+        setApiInfo(`${info.appName} v${info.appVersion} | Electron ${info.electronVersion}`)
+        setApiBaseUrl(runtime.apiBaseUrl)
+        setWsBaseUrl(runtime.wsBaseUrl)
+
+        const client = new ApiClient(runtime.apiBaseUrl)
+        await syncCatalogsWithStatus(client, 'desktop', runtime.apiBaseUrl)
         return
       }
 
-      setRuntimeMode('desktop')
+      if (invokeFromElectron) {
+        setRuntimeMode('desktop')
 
-      const [info, runtime] = await Promise.all([
-        bridge.getAppInfo(),
-        bridge.getRuntimeConfig()
-      ])
+        const [infoResult, runtimeResult] = await Promise.all([
+          invokeFromElectron('app:get-info'),
+          invokeFromElectron('app:get-runtime-config')
+        ])
 
-      setApiInfo(`${info.appName} v${info.appVersion} | Electron ${info.electronVersion}`)
-      setApiBaseUrl(runtime.apiBaseUrl)
-      setWsBaseUrl(runtime.wsBaseUrl)
+        const info = infoResult as {
+          appName: string
+          appVersion: string
+          electronVersion: string
+        }
 
-      const client = new ApiClient(runtime.apiBaseUrl)
-      await syncCatalogsWithStatus(client, 'desktop')
+        const runtime = runtimeResult as {
+          apiBaseUrl: string
+          wsBaseUrl: string
+        }
+
+        setApiInfo(`${info.appName} v${info.appVersion} | Electron ${info.electronVersion}`)
+        setApiBaseUrl(runtime.apiBaseUrl)
+        setWsBaseUrl(runtime.wsBaseUrl)
+
+        const client = new ApiClient(runtime.apiBaseUrl)
+        await syncCatalogsWithStatus(client, 'desktop', runtime.apiBaseUrl)
+        return
+      }
+
+      const detectedMode: 'desktop' | 'web' = isElectronRuntime ? 'desktop' : 'web'
+      setRuntimeMode(detectedMode)
+      const fallbackApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
+      const fallbackWsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? DEFAULT_WS_BASE_URL
+
+      setApiInfo(
+        isElectronRuntime
+          ? 'Slack Full Clone vdev | Electron iniciado sin bridge custom'
+          : 'Slack Full Clone vdev | Electron bridge no disponible'
+      )
+      setApiBaseUrl(fallbackApiBaseUrl)
+      setWsBaseUrl(fallbackWsBaseUrl)
+      const fallbackClient = new ApiClient(fallbackApiBaseUrl)
+      await syncCatalogsWithStatus(fallbackClient, detectedMode, fallbackApiBaseUrl)
     }
 
     void loadDesktopContext().catch((error: Error) => {
-      setFeedback(`Error cargando contexto: ${error.message}`)
+      setSessionStatus(`Error cargando contexto: ${error.message}`)
     })
-  }, [])
+  }, [isElectronRuntime])
 
   useEffect(() => {
-    if (!apiBaseUrl || !feedback.includes('backend no disponible')) {
+    if (!apiBaseUrl || !sessionStatus.includes('backend no disponible')) {
       return
     }
 
     const retryTimer = window.setInterval(() => {
       const client = new ApiClient(apiBaseUrl)
-      void syncCatalogsWithStatus(client, runtimeMode)
+      void syncCatalogsWithStatus(client, runtimeMode, apiBaseUrl)
     }, 5000)
 
     return () => {
       window.clearInterval(retryTimer)
     }
-  }, [apiBaseUrl, feedback, runtimeMode])
+  }, [apiBaseUrl, sessionStatus, runtimeMode])
 
   const canConnect = useMemo(() => {
     return wsBaseUrl.length > 0 && channelId.length > 0 && userId.length > 0
@@ -135,6 +234,18 @@ function App(): React.JSX.Element {
       channelId,
       userId
     })
+
+  useEffect(() => {
+    if (layoutMode === 'legacy' || !canConnect) {
+      return
+    }
+
+    if (status === 'connected' || status === 'connecting' || status === 'reconnecting') {
+      return
+    }
+
+    connect()
+  }, [layoutMode, canConnect, status, connect])
 
   const refreshPresence = async (targetChannelId: string): Promise<void> => {
     if (!apiClient || !targetChannelId) {
@@ -170,6 +281,343 @@ function App(): React.JSX.Element {
 
   const currentPresence = websocketPresence ?? restPresence
 
+  useEffect(() => {
+    if (!channelId && channels.length > 0) {
+      setChannelId(channels[0].id)
+    }
+  }, [channels, channelId])
+
+  useEffect(() => {
+    if (!userId && users.length > 0) {
+      setUserId(users[0].id)
+    }
+  }, [users, userId])
+
+  useEffect(() => {
+    if (layoutMode === 'legacy' || didSeedLocalFallbackRef.current) {
+      return
+    }
+
+    if (users.length > 0 && channels.length > 0) {
+      return
+    }
+
+    didSeedLocalFallbackRef.current = true
+
+    const fallbackUser: User = {
+      id: makeLocalId('user'),
+      username: LOCAL_PRIMARY_USERNAME,
+      display_name: LOCAL_PRIMARY_DISPLAY_NAME
+    }
+
+    const mockUsers: User[] = [
+      fallbackUser,
+      {
+        id: makeLocalId('user'),
+        username: 'laura.dev',
+        display_name: 'Laura DevOps'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'matias.fe',
+        display_name: 'Matias Frontend'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'felipe.be',
+        display_name: 'Felipe Backend'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'camila.qa',
+        display_name: 'Camila QA'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'nora.data',
+        display_name: 'Nora Data'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'diego.sre',
+        display_name: 'Diego SRE'
+      },
+      {
+        id: makeLocalId('user'),
+        username: 'ana.pm',
+        display_name: 'Ana Product'
+      }
+    ]
+
+    const mockChannels: Channel[] = [
+      {
+        id: makeLocalId('channel'),
+        name: 'frontend-platform',
+        topic: 'UI, componentes y experiencia del cliente',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'backend-api',
+        topic: 'Servicios, contratos y observabilidad',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'devops-ci-cd',
+        topic: 'Pipelines, despliegues y release notes',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'bug-triage',
+        topic: 'Incidentes y priorizacion diaria',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'architecture-rfc',
+        topic: 'Decision records y propuestas tecnicas',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'mobile-react-native',
+        topic: 'App mobile, rendimiento y releases',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'security-appsec',
+        topic: 'SAST, DAST y hardening',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'random-dev-memes',
+        topic: 'Canal social del equipo developer',
+        is_private: false
+      },
+      {
+        id: makeLocalId('channel'),
+        name: 'pair-programming',
+        topic: 'Sesiones de pair y mentoring',
+        is_private: false
+      }
+    ]
+
+    const fallbackMessagesByChannel: Record<string, Message[]> = {
+      [mockChannels[0].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[0].id,
+          author_id: mockUsers[2].id,
+          body: 'Termine el refactor del sidebar para virtualizar listas grandes. Comparto PR en 10 min.',
+          created_at: new Date(Date.now() - 1000 * 60 * 48).toISOString()
+        },
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[0].id,
+          author_id: mockUsers[4].id,
+          body: 'QA reporta que el composer falla en pantallas pequenas. Ya deje video y pasos de reproduccion.',
+          created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString()
+        },
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[0].id,
+          author_id: fallbackUser.id,
+          body: 'Perfecto, lo tomo. Tambien active mocks visuales para validar UX sin backend.',
+          created_at: new Date(Date.now() - 1000 * 60 * 14).toISOString()
+        },
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[0].id,
+          author_id: mockUsers[1].id,
+          body: 'Deploy dev completado. URL interna lista para pruebas de regresion.',
+          created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString()
+        }
+      ],
+      [mockChannels[1].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[1].id,
+          author_id: mockUsers[3].id,
+          body: 'Abri endpoint /v2/messages con paginacion cursor. Falta documentar swagger.',
+          created_at: new Date(Date.now() - 1000 * 60 * 39).toISOString()
+        },
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[1].id,
+          author_id: mockUsers[5].id,
+          body: 'Metrica p95 estable en 180ms despues del ultimo deploy.',
+          created_at: new Date(Date.now() - 1000 * 60 * 11).toISOString()
+        }
+      ],
+      [mockChannels[2].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[2].id,
+          author_id: mockUsers[6].id,
+          body: 'Pipeline nightly verde. Se actualizaron snapshots y tests e2e.',
+          created_at: new Date(Date.now() - 1000 * 60 * 43).toISOString()
+        },
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[2].id,
+          author_id: fallbackUser.id,
+          body: 'Agende release candidate para las 18:00 con rollback plan incluido.',
+          created_at: new Date(Date.now() - 1000 * 60 * 17).toISOString()
+        }
+      ],
+      [mockChannels[3].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[3].id,
+          author_id: mockUsers[4].id,
+          body: 'Issue #482 reproducido en Windows + Electron. Prioridad alta para hoy.',
+          created_at: new Date(Date.now() - 1000 * 60 * 27).toISOString()
+        }
+      ],
+      [mockChannels[4].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[4].id,
+          author_id: fallbackUser.id,
+          body: 'Propongo ADR para aislar el adapter de layout y desacoplar fuentes de datos.',
+          created_at: new Date(Date.now() - 1000 * 60 * 21).toISOString()
+        }
+      ],
+      [mockChannels[5].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[5].id,
+          author_id: mockUsers[2].id,
+          body: 'React Native build 0.8.14 publicado en beta interna.',
+          created_at: new Date(Date.now() - 1000 * 60 * 9).toISOString()
+        }
+      ],
+      [mockChannels[6].id]: [
+        {
+          id: makeLocalId('msg'),
+          channel_id: mockChannels[6].id,
+          author_id: mockUsers[6].id,
+          body: 'Dependencias auditadas. Sin criticos. Pendiente cerrar dos high en dev.',
+          created_at: new Date(Date.now() - 1000 * 60 * 31).toISOString()
+        }
+      ],
+      [mockChannels[7].id]: [],
+      [mockChannels[8].id]: []
+    }
+
+    const mergedUsers = users.length > 0 ? users : mockUsers
+    const mergedChannels = channels.length > 0 ? channels : mockChannels
+
+    if (users.length === 0) {
+      setUsers(mergedUsers)
+    }
+
+    if (channels.length === 0) {
+      setChannels(mergedChannels)
+    }
+
+    const defaultChannelId = mergedChannels[0]?.id ?? ''
+    const defaultUserId = mergedUsers[0]?.id ?? ''
+
+    if (!defaultChannelId || !defaultUserId) {
+      return
+    }
+
+    if (channels.length === 0) {
+      const seededMessagesByChannel: Record<string, Message[]> = {
+        ...fallbackMessagesByChannel
+      }
+
+      // Ensure every channel has an initialized bucket, even if empty.
+      for (const channel of mergedChannels) {
+        if (!seededMessagesByChannel[channel.id]) {
+          seededMessagesByChannel[channel.id] = []
+        }
+      }
+
+      setLocalMessagesByChannel(seededMessagesByChannel)
+      setHistoryMessages(seededMessagesByChannel[defaultChannelId] ?? [])
+    }
+
+    setUserId(defaultUserId)
+    setChannelId(defaultChannelId)
+    setSessionStatus('Estado de la sesión actual: desktop conectado (modo local)')
+  }, [layoutMode, users, channels])
+
+  useEffect(() => {
+    if (layoutMode === 'legacy' || !apiClient || channels.length === 0) {
+      return
+    }
+
+    if (didBootstrapChatRef.current) {
+      return
+    }
+
+    didBootstrapChatRef.current = true
+
+    const bootstrapChatContext = async (): Promise<void> => {
+      try {
+        let resolvedUserId = userId
+        let resolvedChannelId = channelId
+
+        if (!resolvedUserId) {
+          if (users.length > 0) {
+            resolvedUserId = users[0].id
+          } else {
+            const generatedSuffix = Date.now().toString().slice(-6)
+            const createdUser = await apiClient.createUser({
+              username: `desktop-${generatedSuffix}`,
+              display_name: 'Desktop User'
+            })
+            resolvedUserId = createdUser.id
+          }
+        }
+
+        if (!resolvedChannelId) {
+          resolvedChannelId = channels[0].id
+        }
+
+        if (!resolvedUserId || !resolvedChannelId) {
+          return
+        }
+
+        setUserId(resolvedUserId)
+        setChannelId(resolvedChannelId)
+
+        try {
+          await apiClient.addMemberToChannel(resolvedChannelId, { user_id: resolvedUserId })
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : ''
+          if (!detail.includes('already a member')) {
+            throw error
+          }
+        }
+
+        const [history] = await Promise.all([
+          apiClient.listMessages(resolvedChannelId),
+          refreshPresence(resolvedChannelId)
+        ])
+        setHistoryMessages(history)
+      } catch (error) {
+          setFeedback(toOperationalError(error, 'No fue posible inicializar el chat'))
+      }
+    }
+
+    void bootstrapChatContext()
+  }, [
+    apiClient,
+    channelId,
+    channels,
+    layoutMode,
+    refreshPresence,
+    userId,
+    users
+  ])
+
   const workspaceName = useMemo(() => {
     if (!apiInfo || apiInfo === 'Loading runtime info...') {
       return 'Slack Full Clone'
@@ -184,36 +632,140 @@ function App(): React.JSX.Element {
   }, [apiInfo])
 
   const handleSendMessage = async (): Promise<void> => {
-    if (!draftMessage.trim()) {
-      return
-    }
-
-    const messageBody = draftMessage.trim()
-    const sentOverWebSocket = sendMessage(messageBody)
-
-    if (!sentOverWebSocket) {
-      if (!apiClient || !channelId || !userId) {
-        setFeedback('Socket no disponible y faltan datos para fallback REST')
+    try {
+      if (!draftMessage.trim()) {
         return
       }
 
-      try {
-        await apiClient.createMessage(channelId, {
-          author_id: userId,
+      let resolvedUserId = userId
+      let resolvedChannelId = channelId
+      const messageBody = draftMessage.trim()
+
+      if (!resolvedUserId) {
+        if (users.length > 0) {
+          resolvedUserId = users[0].id
+        } else if (apiClient) {
+          const generatedSuffix = Date.now().toString().slice(-6)
+          const createdUser = await apiClient.createUser({
+            username: `desktop${generatedSuffix}`,
+            display_name: 'Desktop User'
+          })
+          resolvedUserId = createdUser.id
+          await refreshCatalogs(apiClient)
+        } else {
+          const fallbackUser: User = {
+            id: makeLocalId('user'),
+            username: LOCAL_PRIMARY_USERNAME,
+            display_name: LOCAL_PRIMARY_DISPLAY_NAME
+          }
+          resolvedUserId = fallbackUser.id
+          setUsers((current) => [...current, fallbackUser])
+        }
+        setUserId(resolvedUserId)
+      }
+
+      if (!resolvedChannelId) {
+        if (channels.length > 0) {
+          resolvedChannelId = channels[0].id
+        } else if (apiClient) {
+          try {
+            const createdChannel = await apiClient.createChannel({
+              name: 'general',
+              topic: 'Canal sincronizado con backend FastAPI'
+            })
+            resolvedChannelId = createdChannel.id
+          } catch {
+            const refreshedChannels = await apiClient.listChannels()
+            const preferred = refreshedChannels.find((channel) => channel.name === 'general')
+            resolvedChannelId = preferred?.id ?? refreshedChannels[0]?.id ?? ''
+          }
+          await refreshCatalogs(apiClient)
+        } else {
+          const fallbackChannel: Channel = {
+            id: makeLocalId('channel'),
+            name: 'general',
+            topic: 'Canal demo local activo',
+            is_private: false
+          }
+          resolvedChannelId = fallbackChannel.id
+          setChannels((current) => [...current, fallbackChannel])
+        }
+        setChannelId(resolvedChannelId)
+      }
+
+      if (!resolvedUserId || !resolvedChannelId) {
+        setFeedback('No fue posible inicializar usuario/canal para enviar mensajes')
+        return
+      }
+
+      if (layoutMode !== 'legacy' && apiClient) {
+        try {
+          try {
+            await apiClient.addMemberToChannel(resolvedChannelId, { user_id: resolvedUserId })
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : ''
+            if (!detail.includes('already a member')) {
+              throw error
+            }
+          }
+
+          await apiClient.createMessage(resolvedChannelId, {
+            author_id: resolvedUserId,
+            body: messageBody
+          })
+          const history = await apiClient.listMessages(resolvedChannelId)
+          setHistoryMessages(history)
+          cacheChannelMessages(resolvedChannelId, history)
+          await refreshPresence(resolvedChannelId)
+          setFeedback('Mensaje enviado')
+          setDraftMessage('')
+          return
+        } catch {
+          // Continue with local fallback below.
+        }
+      }
+
+      if (layoutMode !== 'legacy') {
+        const fallbackMessage: Message = {
+          id: makeLocalId('msg'),
+          channel_id: resolvedChannelId,
+          author_id: resolvedUserId,
+          body: messageBody,
+          created_at: new Date().toISOString()
+        }
+        const nextHistory = [...(localMessagesByChannel[resolvedChannelId] ?? historyMessages), fallbackMessage]
+        setHistoryMessages(nextHistory)
+        cacheChannelMessages(resolvedChannelId, nextHistory)
+        setFeedback('Mensaje enviado (modo local)')
+        setDraftMessage('')
+        return
+      }
+
+      if (!apiClient) {
+        setFeedback('Backend no disponible para enviar mensajes')
+        return
+      }
+
+      connect()
+      const sentOverWebSocket = sendMessage(messageBody)
+
+      if (!sentOverWebSocket) {
+        await apiClient.createMessage(resolvedChannelId, {
+          author_id: resolvedUserId,
           body: messageBody
         })
         setFeedback('Mensaje enviado por fallback REST')
-        const history = await apiClient.listMessages(channelId)
+        const history = await apiClient.listMessages(resolvedChannelId)
         setHistoryMessages(history)
-      } catch (error) {
-        setFeedback(error instanceof Error ? error.message : 'No fue posible enviar el mensaje')
-        return
+        await refreshPresence(resolvedChannelId)
+      } else {
+        setFeedback('Mensaje enviado por WebSocket')
       }
-    } else {
-      setFeedback('Mensaje enviado por WebSocket')
-    }
 
-    setDraftMessage('')
+      setDraftMessage('')
+    } catch (error) {
+      setFeedback(toOperationalError(error, 'Error inesperado al enviar mensaje'))
+    }
   }
 
   const handleCreateUser = async (): Promise<void> => {
@@ -233,7 +785,7 @@ function App(): React.JSX.Element {
       setUserId(created.id)
       await refreshCatalogs(apiClient)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'No fue posible crear usuario')
+      setFeedback(toOperationalError(error, 'No fue posible crear usuario'))
     }
   }
 
@@ -254,7 +806,7 @@ function App(): React.JSX.Element {
       setChannelId(created.id)
       await refreshCatalogs(apiClient)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'No fue posible crear canal')
+      setFeedback(toOperationalError(error, 'No fue posible crear canal'))
     }
   }
 
@@ -268,7 +820,7 @@ function App(): React.JSX.Element {
       setFeedback('Usuario agregado al canal')
       await refreshPresence(channelId)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'No fue posible unir usuario al canal')
+      setFeedback(toOperationalError(error, 'No fue posible unir usuario al canal'))
     }
   }
 
@@ -282,8 +834,78 @@ function App(): React.JSX.Element {
       setHistoryMessages(history)
       setFeedback(`Historial cargado: ${history.length} mensajes`)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'No fue posible cargar historial')
+      setFeedback(toOperationalError(error, 'No fue posible cargar historial'))
     }
+  }
+
+  const handleSidebarItemSelect = (sectionId: string, itemId: string): void => {
+    if (sectionId === 'channels') {
+      setChannelId(itemId)
+      setHistoryMessages(localMessagesByChannel[itemId] ?? [])
+      if (apiClient) {
+        void apiClient
+          .listMessages(itemId)
+          .then((history) => {
+            setHistoryMessages(history)
+            cacheChannelMessages(itemId, history)
+            setFeedback(`Historial cargado: ${history.length} mensajes`)
+          })
+          .catch(() => {
+            setHistoryMessages(localMessagesByChannel[itemId] ?? [])
+          })
+
+        void refreshPresence(itemId)
+      }
+      return
+    }
+
+    if (sectionId === 'dms') {
+      setUserId(itemId)
+      setFeedback('Usuario activo actualizado para envío de mensajes')
+    }
+  }
+
+  const handleQuickCreateChannel = (): void => {
+    const generatedName = `canal-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}`
+
+    if (!apiClient) {
+      const localChannel: Channel = {
+        id: makeLocalId('channel'),
+        name: generatedName,
+        topic: 'Canal creado desde la interfaz (local)',
+        is_private: false
+      }
+
+      setChannels((current) => [localChannel, ...current])
+      setChannelId(localChannel.id)
+      setHistoryMessages([])
+      setFeedback(`Canal creado: ${localChannel.name}`)
+      return
+    }
+
+    void apiClient
+      .createChannel({
+        name: generatedName,
+        topic: 'Canal creado desde la interfaz'
+      })
+      .then(async (created) => {
+        setFeedback(`Canal creado: ${created.name}`)
+        await refreshCatalogs(apiClient)
+        setChannelId(created.id)
+      })
+      .catch((error) => {
+        const localChannel: Channel = {
+          id: makeLocalId('channel'),
+          name: generatedName,
+          topic: 'Canal creado desde la interfaz (local)',
+          is_private: false
+        }
+
+        setChannels((current) => [localChannel, ...current])
+        setChannelId(localChannel.id)
+        setHistoryMessages([])
+        setFeedback(toOperationalError(error, `Canal creado: ${localChannel.name} (modo local)`))
+      })
   }
 
   if (layoutMode !== 'legacy') {
@@ -296,7 +918,14 @@ function App(): React.JSX.Element {
         historyMessages={historyMessages}
         events={events}
         presence={currentPresence}
-        feedback={feedback}
+        feedback={feedback || sessionStatus}
+        draftMessage={draftMessage}
+        onDraftMessageChange={setDraftMessage}
+        onSendMessage={() => {
+          void handleSendMessage()
+        }}
+        onSidebarItemSelect={handleSidebarItemSelect}
+        onQuickCreateChannel={handleQuickCreateChannel}
         density="comfortable"
         sidebarCollapsed={false}
       />

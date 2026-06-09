@@ -14,7 +14,7 @@ function configureDevStoragePaths(): void {
     return
   }
 
-  const basePath = join(tmpdir(), 'slack-full-clone-dev')
+  const basePath = join(tmpdir(), 'slack-full-clone-dev', String(process.pid))
   const userDataPath = join(basePath, 'user-data')
   const sessionDataPath = join(basePath, 'session-data')
   const cachePath = join(basePath, 'cache')
@@ -26,6 +26,7 @@ function configureDevStoragePaths(): void {
   app.setPath('userData', userDataPath)
   app.setPath('sessionData', sessionDataPath)
   app.commandLine.appendSwitch('disk-cache-dir', cachePath)
+  app.commandLine.appendSwitch('disable-http-cache')
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 }
 

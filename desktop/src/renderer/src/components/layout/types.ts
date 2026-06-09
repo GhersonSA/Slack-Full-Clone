@@ -64,3 +64,20 @@ export type ComposerTool = {
   label: string
   icon: string
 }
+
+export type ChatInfoAction = {
+  id: string
+  label: string
+  icon: string
+}
+
+export type ChatInfoPanel = {
+  title: string
+  subtitle?: string
+  actions: ChatInfoAction[]
+  aboutTopic: string
+  aboutDescription: string
+  membersCount: number
+  createdAtLabel?: string
+  organizationsCount?: number
+}
