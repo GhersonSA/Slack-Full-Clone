@@ -1,3 +1,5 @@
+export type LayoutDensity = 'compact' | 'comfortable'
+
 export type AvatarItem = {
   id: string
   label: string
@@ -24,6 +26,7 @@ export type SidebarItem = {
   trailingText?: string
   unreadCount?: number
   hasPresenceDot?: boolean
+  compactLabel?: string
 }
 
 export type SidebarSection = {

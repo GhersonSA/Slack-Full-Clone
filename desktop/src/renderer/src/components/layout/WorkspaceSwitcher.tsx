@@ -1,12 +1,23 @@
-import type { WorkspaceItem } from './types'
+import type { LayoutDensity, WorkspaceItem } from './types'
 
 type WorkspaceSwitcherProps = {
   workspaces: WorkspaceItem[]
+  density?: LayoutDensity
 }
 
-function WorkspaceSwitcher({ workspaces }: WorkspaceSwitcherProps): React.JSX.Element {
+function WorkspaceSwitcher({
+  workspaces,
+  density = 'comfortable'
+}: WorkspaceSwitcherProps): React.JSX.Element {
+  const isCompact = density === 'compact'
+
   return (
-    <div className="flex h-full flex-col items-center gap-2 bg-[var(--slack-workspace-rail)] py-3">
+    <div
+      className={[
+        'flex h-full flex-col items-center bg-[var(--slack-workspace-rail)]',
+        isCompact ? 'gap-2 py-3' : 'gap-3 py-4'
+      ].join(' ')}
+    >
       {workspaces.map((workspace) => {
         const isActive = workspace.isActive ?? false
 
@@ -15,7 +26,8 @@ function WorkspaceSwitcher({ workspaces }: WorkspaceSwitcherProps): React.JSX.El
             key={workspace.id}
             aria-label={workspace.label}
             className={[
-              'relative flex h-10 w-10 items-center justify-center rounded-xl text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]',
+              'relative flex items-center justify-center rounded-xl text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]',
+              isCompact ? 'h-10 w-10' : 'h-11 w-11',
               isActive ? 'ring-2 ring-white/40 shadow-lg shadow-black/30' : 'opacity-80 hover:opacity-100'
             ].join(' ')}
             style={{ backgroundColor: workspace.accentColor ?? '#0E7A9E' }}
@@ -30,7 +42,10 @@ function WorkspaceSwitcher({ workspaces }: WorkspaceSwitcherProps): React.JSX.El
 
       <button
         aria-label="Add workspace"
-        className="mt-2 flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 text-xl text-[#D9CDE1] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]"
+        className={[
+          'mt-2 flex items-center justify-center rounded-xl border border-white/25 text-xl text-[#D9CDE1] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]',
+          isCompact ? 'h-10 w-10' : 'h-11 w-11'
+        ].join(' ')}
       >
         +
       </button>

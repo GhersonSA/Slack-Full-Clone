@@ -1,9 +1,10 @@
-import type { AvatarItem } from './types'
+import type { AvatarItem, LayoutDensity } from './types'
 
 type TopNavigationProps = {
   workspaceName: string
   searchPlaceholder: string
   memberAvatars: AvatarItem[]
+  density?: LayoutDensity
 }
 
 function AvatarStackItem({ avatar }: { avatar: AvatarItem }): React.JSX.Element {
@@ -41,10 +42,18 @@ function AvatarStackItem({ avatar }: { avatar: AvatarItem }): React.JSX.Element 
 function TopNavigation({
   workspaceName,
   searchPlaceholder,
-  memberAvatars
+  memberAvatars,
+  density = 'comfortable'
 }: TopNavigationProps): React.JSX.Element {
+  const isCompact = density === 'compact'
+
   return (
-    <div className="flex h-full items-center gap-2 bg-[var(--slack-topbar)] px-3 text-[#E9DDEA]">
+    <div
+      className={[
+        'flex h-full items-center bg-[var(--slack-topbar)] text-[#E9DDEA]',
+        isCompact ? 'gap-2 px-3' : 'gap-3 px-4'
+      ].join(' ')}
+    >
       <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Open menu">
         <span className="block h-0.5 w-4 bg-current" />
         <span className="mt-1 block h-0.5 w-4 bg-current" />

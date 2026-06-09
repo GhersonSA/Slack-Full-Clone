@@ -1,4 +1,4 @@
-import type { ChannelTab, ChatMessage, ChatNoticeCard, ComposerTool } from './types'
+import type { ChannelTab, ChatMessage, ChatNoticeCard, ComposerTool, LayoutDensity } from './types'
 
 type ChatAreaProps = {
   channelName: string
@@ -8,6 +8,7 @@ type ChatAreaProps = {
   tabs: ChannelTab[]
   notices: ChatNoticeCard[]
   composerTools: ComposerTool[]
+  density?: LayoutDensity
 }
 
 function MessageAvatar({ message }: { message: ChatMessage }): React.JSX.Element {
@@ -29,11 +30,14 @@ function ChatArea({
   composerPlaceholder,
   tabs,
   notices,
-  composerTools
+  composerTools,
+  density = 'comfortable'
 }: ChatAreaProps): React.JSX.Element {
+  const isCompact = density === 'compact'
+
   return (
     <div className="flex h-full min-w-0 flex-col bg-[var(--slack-canvas)] text-[var(--slack-ink)]">
-      <header className="shrink-0 border-b border-[var(--slack-line)] px-6 pt-2">
+      <header className={['shrink-0 border-b border-[var(--slack-line)]', isCompact ? 'px-4 pt-1.5' : 'px-6 pt-2'].join(' ')}>
         <div className="flex h-10 items-center justify-between">
           <div className="min-w-0">
             <p className="truncate text-[25px] font-bold leading-none">#{channelName}</p>
@@ -50,7 +54,7 @@ function ChatArea({
           </div>
         </div>
 
-        <nav className="flex h-9 items-center gap-1 overflow-x-auto text-[13px]">
+        <nav className={['flex items-center gap-1 overflow-x-auto text-[13px]', isCompact ? 'h-8' : 'h-9'].join(' ')}>
           {tabs.map((tab) => {
             const isActive = tab.isActive ?? false
 
@@ -72,7 +76,7 @@ function ChatArea({
         </nav>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+      <div className={['min-h-0 flex-1 overflow-y-auto', isCompact ? 'px-4 py-3' : 'px-6 py-4'].join(' ')}>
         {notices.length > 0 ? (
           <ul className="mb-4 space-y-2">
             {notices.map((notice) => (
@@ -90,7 +94,7 @@ function ChatArea({
           </ul>
         ) : null}
 
-        <ul className="space-y-4">
+        <ul className={isCompact ? 'space-y-3' : 'space-y-4'}>
           {messages.map((message) => (
             <li key={message.id} className="flex gap-3">
               <MessageAvatar message={message} />
@@ -121,7 +125,7 @@ function ChatArea({
         </ul>
       </div>
 
-      <footer className="border-t border-[var(--slack-line)] px-6 py-3">
+      <footer className={['border-t border-[var(--slack-line)]', isCompact ? 'px-4 py-2.5' : 'px-6 py-3'].join(' ')}>
         <div className="rounded-md border border-[#CFCFD0] shadow-sm shadow-black/5">
           <div className="flex h-12 items-center px-3 text-[var(--slack-muted)]">
             <span className="truncate">{composerPlaceholder}</span>

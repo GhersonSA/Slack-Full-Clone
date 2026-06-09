@@ -11,6 +11,7 @@ export type {
   ChatMessage,
   ChatNoticeCard,
   ComposerTool,
+  LayoutDensity,
   SidebarItem,
   SidebarSection,
   WorkspaceItem
