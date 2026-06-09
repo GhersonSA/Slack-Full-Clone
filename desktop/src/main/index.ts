@@ -1,4 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { mkdirSync } from 'fs'
+import { tmpdir } from 'os'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -6,6 +8,28 @@ import { IPC_CHANNELS, type AppInfo, type RuntimeConfig } from '../shared/ipc'
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
 const DEFAULT_WS_BASE_URL = 'ws://127.0.0.1:8000'
+
+function configureDevStoragePaths(): void {
+  if (!is.dev) {
+    return
+  }
+
+  const basePath = join(tmpdir(), 'slack-full-clone-dev')
+  const userDataPath = join(basePath, 'user-data')
+  const sessionDataPath = join(basePath, 'session-data')
+  const cachePath = join(basePath, 'cache')
+
+  mkdirSync(userDataPath, { recursive: true })
+  mkdirSync(sessionDataPath, { recursive: true })
+  mkdirSync(cachePath, { recursive: true })
+
+  app.setPath('userData', userDataPath)
+  app.setPath('sessionData', sessionDataPath)
+  app.commandLine.appendSwitch('disk-cache-dir', cachePath)
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+}
+
+configureDevStoragePaths()
 
 function getRuntimeConfig(): RuntimeConfig {
   return {
