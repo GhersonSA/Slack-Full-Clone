@@ -17,14 +17,21 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./slack_clone.db"
 
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: str | list[str] = "http://localhost:5173"
 
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+            sanitized = value.strip()
+            if sanitized.startswith("[") and sanitized.endswith("]"):
+                sanitized = sanitized[1:-1]
+            return [origin.strip().strip('"').strip("'") for origin in sanitized.split(",") if origin.strip()]
+        if isinstance(value, list):
+            return [str(origin).strip() for origin in value if str(origin).strip()]
+        return []
 
 
 @lru_cache
