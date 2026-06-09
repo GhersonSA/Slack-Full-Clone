@@ -1,7 +1,15 @@
 import ChatArea from './ChatArea'
 import Sidebar from './Sidebar'
 import TopNavigation from './TopNavigation'
-import type { ChatMessage, SidebarSection, WorkspaceItem } from './types'
+import type {
+  AvatarItem,
+  ChannelTab,
+  ChatMessage,
+  ChatNoticeCard,
+  ComposerTool,
+  SidebarSection,
+  WorkspaceItem
+} from './types'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 type AppLayoutProps = {
@@ -13,12 +21,10 @@ type AppLayoutProps = {
   channelDescription: string
   messages: ChatMessage[]
   composerPlaceholder: string
-  topBarAvatars: Array<{
-    id: string
-    label: string
-    imageUrl?: string
-    accentColor?: string
-  }>
+  topBarAvatars: AvatarItem[]
+  channelTabs: ChannelTab[]
+  notices: ChatNoticeCard[]
+  composerTools: ComposerTool[]
 }
 
 function AppLayout({
@@ -30,7 +36,10 @@ function AppLayout({
   channelDescription,
   messages,
   composerPlaceholder,
-  topBarAvatars
+  topBarAvatars,
+  channelTabs,
+  notices,
+  composerTools
 }: AppLayoutProps): React.JSX.Element {
   return (
     <div className="h-screen w-screen overflow-hidden text-sm text-[#1D1C1D]">
@@ -58,6 +67,9 @@ function AppLayout({
               channelDescription={channelDescription}
               messages={messages}
               composerPlaceholder={composerPlaceholder}
+              tabs={channelTabs}
+              notices={notices}
+              composerTools={composerTools}
             />
           </main>
         </div>

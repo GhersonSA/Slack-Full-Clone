@@ -3,6 +3,7 @@ export type AvatarItem = {
   label: string
   imageUrl?: string
   accentColor?: string
+  hasOnlineIndicator?: boolean
 }
 
 export type WorkspaceItem = {
@@ -19,6 +20,10 @@ export type SidebarItem = {
   isActive?: boolean
   isBold?: boolean
   prefix?: string
+  leadingIcon?: string
+  trailingText?: string
+  unreadCount?: number
+  hasPresenceDot?: boolean
 }
 
 export type SidebarSection = {
@@ -34,4 +39,25 @@ export type ChatMessage = {
   content: string
   avatarLabel?: string
   accentColor?: string
+  reactions?: Array<{ emoji: string; count: number }>
+}
+
+export type ChannelTab = {
+  id: string
+  label: string
+  isActive?: boolean
+  leadingIcon?: string
+}
+
+export type ChatNoticeCard = {
+  id: string
+  title: string
+  subtitle: string
+  leadingEmoji?: string
+}
+
+export type ComposerTool = {
+  id: string
+  label: string
+  icon: string
 }
