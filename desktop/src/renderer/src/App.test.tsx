@@ -20,6 +20,8 @@ function jsonResponse(payload: unknown, ok = true, status = 200): Response {
 
 describe('App', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_LAYOUT_MODE', 'legacy')
+
     Object.defineProperty(window, 'api', {
       writable: true,
       value: {
@@ -41,6 +43,7 @@ describe('App', () => {
 
   afterEach(() => {
     cleanup()
+    vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 

@@ -219,7 +219,7 @@ function App(): React.JSX.Element {
     }
   }
 
-  if (layoutMode === 'slack') {
+  if (layoutMode !== 'legacy') {
     return (
       <SlackLayoutAdapter
         workspaceName={workspaceName}
