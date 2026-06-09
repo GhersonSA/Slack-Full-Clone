@@ -4,6 +4,7 @@ import { useChannelWebSocket } from '@renderer/hooks/useChannelWebSocket'
 import { ApiClient } from '@renderer/services/apiClient'
 import type { Channel, Message, Presence, User } from '@renderer/types/api'
 import type { ChatEventPresence } from '@renderer/types/realtime'
+import { SlackLayoutAdapter } from '@renderer/components/layout'
 
 function App(): React.JSX.Element {
   const [apiInfo, setApiInfo] = useState('Loading runtime info...')
@@ -21,6 +22,8 @@ function App(): React.JSX.Element {
   const [historyMessages, setHistoryMessages] = useState<Message[]>([])
   const [restPresence, setRestPresence] = useState<Presence | null>(null)
   const [feedback, setFeedback] = useState('')
+
+  const layoutMode = import.meta.env.VITE_LAYOUT_MODE
 
   const apiClient = useMemo(() => {
     if (!apiBaseUrl) {
@@ -99,6 +102,19 @@ function App(): React.JSX.Element {
   }, [events, channelId])
 
   const currentPresence = websocketPresence ?? restPresence
+
+  const workspaceName = useMemo(() => {
+    if (!apiInfo || apiInfo === 'Loading runtime info...') {
+      return 'Slack Full Clone'
+    }
+
+    const separatorIndex = apiInfo.indexOf(' v')
+    if (separatorIndex <= 0) {
+      return apiInfo
+    }
+
+    return apiInfo.slice(0, separatorIndex)
+  }, [apiInfo])
 
   const handleSendMessage = async (): Promise<void> => {
     if (!draftMessage.trim()) {
@@ -201,6 +217,23 @@ function App(): React.JSX.Element {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No fue posible cargar historial')
     }
+  }
+
+  if (layoutMode === 'slack') {
+    return (
+      <SlackLayoutAdapter
+        workspaceName={workspaceName}
+        users={users}
+        channels={channels}
+        selectedChannelId={channelId}
+        historyMessages={historyMessages}
+        events={events}
+        presence={currentPresence}
+        feedback={feedback}
+        density="comfortable"
+        sidebarCollapsed={false}
+      />
+    )
   }
 
   return (
