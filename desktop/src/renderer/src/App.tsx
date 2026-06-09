@@ -67,7 +67,13 @@ function App(): React.JSX.Element {
         setFeedback('Estado de la sesión actual: modo web (sin bridge de Electron)')
 
         const fallbackClient = new ApiClient(fallbackApiBaseUrl)
-        await refreshCatalogs(fallbackClient)
+        try {
+          await refreshCatalogs(fallbackClient)
+        } catch {
+          setUsers([])
+          setChannels([])
+          setFeedback('Estado de la sesión actual: modo web, backend no disponible')
+        }
         return
       }
 
@@ -81,7 +87,13 @@ function App(): React.JSX.Element {
       setWsBaseUrl(runtime.wsBaseUrl)
 
       const client = new ApiClient(runtime.apiBaseUrl)
-      await refreshCatalogs(client)
+      try {
+        await refreshCatalogs(client)
+      } catch {
+        setUsers([])
+        setChannels([])
+        setFeedback('Estado de la sesión actual: desktop conectado, backend no disponible')
+      }
     }
 
     void loadDesktopContext().catch((error: Error) => {
