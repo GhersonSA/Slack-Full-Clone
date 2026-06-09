@@ -6,6 +6,21 @@ import type { Channel, Message, Presence, User } from '@renderer/types/api'
 import type { ChatEventPresence } from '@renderer/types/realtime'
 import { SlackLayoutAdapter } from '@renderer/components/layout'
 
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
+const DEFAULT_WS_BASE_URL = 'ws://127.0.0.1:8000'
+
+type DesktopApiBridge = {
+  getAppInfo: () => Promise<{
+    appName: string
+    appVersion: string
+    electronVersion: string
+  }>
+  getRuntimeConfig: () => Promise<{
+    apiBaseUrl: string
+    wsBaseUrl: string
+  }>
+}
+
 function App(): React.JSX.Element {
   const [apiInfo, setApiInfo] = useState('Loading runtime info...')
   const [apiBaseUrl, setApiBaseUrl] = useState('')
@@ -40,9 +55,25 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const loadDesktopContext = async (): Promise<void> => {
+      const bridge = (window as Window & { api?: DesktopApiBridge }).api
+
+      if (!bridge?.getAppInfo || !bridge?.getRuntimeConfig) {
+        const fallbackApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
+        const fallbackWsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? DEFAULT_WS_BASE_URL
+
+        setApiInfo('Slack Full Clone vdev | Electron bridge no disponible')
+        setApiBaseUrl(fallbackApiBaseUrl)
+        setWsBaseUrl(fallbackWsBaseUrl)
+        setFeedback('Estado de la sesión actual: modo web (sin bridge de Electron)')
+
+        const fallbackClient = new ApiClient(fallbackApiBaseUrl)
+        await refreshCatalogs(fallbackClient)
+        return
+      }
+
       const [info, runtime] = await Promise.all([
-        window.api.getAppInfo(),
-        window.api.getRuntimeConfig()
+        bridge.getAppInfo(),
+        bridge.getRuntimeConfig()
       ])
 
       setApiInfo(`${info.appName} v${info.appVersion} | Electron ${info.electronVersion}`)
