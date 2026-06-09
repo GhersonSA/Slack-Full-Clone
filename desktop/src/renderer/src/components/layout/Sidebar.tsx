@@ -7,12 +7,12 @@ type SidebarProps = {
 
 function Sidebar({ workspaceName, sections }: SidebarProps): React.JSX.Element {
   return (
-    <div className="flex h-full flex-col bg-[#3F0E40] text-[#D1C4D9]">
+    <div className="flex h-full flex-col bg-[var(--slack-sidebar)] text-[#D1C4D9]">
       <header className="flex h-12 items-center justify-between border-b border-white/10 px-4">
         <h2 className="truncate text-[22px] font-bold leading-none text-white">{workspaceName}</h2>
         <button
           aria-label="Compose"
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#3F0E40]"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[var(--slack-sidebar)] shadow-sm shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]"
         >
           ✎
         </button>
@@ -20,7 +20,7 @@ function Sidebar({ workspaceName, sections }: SidebarProps): React.JSX.Element {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
         {sections.map((section) => (
-          <section key={section.id} className="mb-4">
+          <section key={section.id} className="mb-4 last:mb-0">
             {section.title ? (
               <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-[#A88FB2]">
                 {section.title}
@@ -36,9 +36,9 @@ function Sidebar({ workspaceName, sections }: SidebarProps): React.JSX.Element {
                   <li key={item.id}>
                     <button
                       className={[
-                        'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition',
+                        'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]',
                         isActive
-                          ? 'bg-[#1164A3] text-white'
+                          ? 'bg-[var(--slack-active)] text-white shadow-sm shadow-black/20'
                           : 'text-[#D1C4D9] hover:bg-white/10 hover:text-white',
                         item.isBold ? 'font-semibold' : 'font-normal'
                       ].join(' ')}

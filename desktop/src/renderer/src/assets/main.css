@@ -4,10 +4,28 @@
 
 :root {
   color-scheme: light;
+  --slack-topbar: #2c0d2e;
+  --slack-workspace-rail: #31103f;
+  --slack-sidebar: #3f0e40;
+  --slack-active: #1164a3;
+  --slack-canvas: #ffffff;
+  --slack-ink: #1d1c1d;
+  --slack-muted: #616061;
+  --slack-line: #e6e6e6;
+  --slack-soft: #f8f8f9;
+  --slack-focus-ring: #9fd9ff;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--slack-ink);
+  background: var(--slack-sidebar);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
 }

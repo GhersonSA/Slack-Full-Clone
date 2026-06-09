@@ -8,7 +8,7 @@ type TopNavigationProps = {
 
 function AvatarStackItem({ avatar }: { avatar: AvatarItem }): React.JSX.Element {
   const onlineIndicator = avatar.hasOnlineIndicator ? (
-    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#2C0D2E] bg-[#2BAC76]" />
+    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[var(--slack-topbar)] bg-[#2BAC76]" />
   ) : null
 
   if (avatar.imageUrl) {
@@ -17,7 +17,7 @@ function AvatarStackItem({ avatar }: { avatar: AvatarItem }): React.JSX.Element 
         <img
           src={avatar.imageUrl}
           alt={avatar.label}
-          className="h-6 w-6 rounded object-cover ring-2 ring-[#2C0D2E]"
+          className="h-6 w-6 rounded object-cover ring-2 ring-[var(--slack-topbar)]"
         />
         {onlineIndicator}
       </div>
@@ -28,7 +28,7 @@ function AvatarStackItem({ avatar }: { avatar: AvatarItem }): React.JSX.Element 
     <div className="relative">
       <div
         aria-label={avatar.label}
-        className="flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold text-white ring-2 ring-[#2C0D2E]"
+        className="flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold text-white ring-2 ring-[var(--slack-topbar)]"
         style={{ backgroundColor: avatar.accentColor ?? '#6B46C1' }}
       >
         {avatar.label.slice(0, 2).toUpperCase()}
@@ -44,27 +44,27 @@ function TopNavigation({
   memberAvatars
 }: TopNavigationProps): React.JSX.Element {
   return (
-    <div className="flex h-full items-center gap-2 bg-[#2C0D2E] px-3 text-[#E9DDEA]">
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10" aria-label="Open menu">
+    <div className="flex h-full items-center gap-2 bg-[var(--slack-topbar)] px-3 text-[#E9DDEA]">
+      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Open menu">
         <span className="block h-0.5 w-4 bg-current" />
         <span className="mt-1 block h-0.5 w-4 bg-current" />
         <span className="mt-1 block h-0.5 w-4 bg-current" />
       </button>
 
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10" aria-label="Go back">
+      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go back">
         ←
       </button>
 
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10" aria-label="Go forward">
+      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Go forward">
         →
       </button>
 
-      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10" aria-label="History">
+      <button className="rounded p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="History">
         ◷
       </button>
 
       <div className="w-full max-w-xl">
-        <div className="flex h-7 items-center rounded-md border border-white/15 bg-white/10 px-2 text-xs text-[#E9DDEA]">
+        <div className="flex h-7 items-center rounded-md border border-white/15 bg-white/10 px-2 text-xs text-[#E9DDEA] shadow-inner shadow-black/10">
           <span className="mr-2 text-[#CBBED0]">⌕</span>
           <span className="truncate opacity-85">{searchPlaceholder}</span>
         </div>
@@ -74,7 +74,7 @@ function TopNavigation({
         <span className="truncate">{workspaceName}</span>
       </div>
 
-      <button className="rounded-full p-1 text-[#C6B5CC] hover:bg-white/10" aria-label="Help">
+      <button className="rounded-full p-1 text-[#C6B5CC] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--slack-focus-ring)]" aria-label="Help">
         ?
       </button>
 

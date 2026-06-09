@@ -47,8 +47,10 @@ npm run dev
 1. Load runtime config through IPC (`window.api.getRuntimeConfig`).
 2. Create user and channel from renderer via REST to FastAPI.
 3. Select the generated user/channel IDs.
-4. Open WebSocket connection to `/api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}`.
-5. Send test chat messages and inspect incoming websocket events.
+4. Add user membership to channel through REST.
+5. Optionally load channel history through REST.
+6. Open WebSocket connection to `/api/v1/realtime/ws/channels/{channel_id}?user_id={user_id}`.
+7. Send test chat messages and inspect incoming websocket events.
 
 ### Build
 

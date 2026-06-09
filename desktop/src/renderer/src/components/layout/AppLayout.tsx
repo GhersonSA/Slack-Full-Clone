@@ -42,9 +42,9 @@ function AppLayout({
   composerTools
 }: AppLayoutProps): React.JSX.Element {
   return (
-    <div className="h-screen w-screen overflow-hidden text-sm text-[#1D1C1D]">
-      <div className="flex h-full flex-col bg-[#3F0E40]">
-        <header className="h-10 shrink-0 border-b border-white/10 bg-[#2C0D2E]">
+    <div className="h-screen w-screen overflow-hidden text-sm text-[var(--slack-ink)]">
+      <div className="flex h-full flex-col bg-[var(--slack-sidebar)]">
+        <header className="h-10 shrink-0 border-b border-white/10 bg-[var(--slack-topbar)]">
           <TopNavigation
             workspaceName={workspaceName}
             searchPlaceholder={searchPlaceholder}
@@ -53,15 +53,15 @@ function AppLayout({
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <aside className="w-16 shrink-0 bg-[#31103F]">
+          <aside className="w-16 shrink-0 border-r border-black/20 bg-[var(--slack-workspace-rail)]">
             <WorkspaceSwitcher workspaces={workspaces} />
           </aside>
 
-          <aside className="w-64 shrink-0 bg-[#3F0E40] text-[#D1C4D9]">
+          <aside className="w-64 shrink-0 border-r border-black/20 bg-[var(--slack-sidebar)] text-[#D1C4D9]">
             <Sidebar workspaceName={workspaceName} sections={sidebarSections} />
           </aside>
 
-          <main className="min-w-0 flex-1 bg-white text-[#1D1C1D]">
+          <main className="min-w-0 flex-1 bg-[var(--slack-canvas)] text-[var(--slack-ink)]">
             <ChatArea
               channelName={channelName}
               channelDescription={channelDescription}
