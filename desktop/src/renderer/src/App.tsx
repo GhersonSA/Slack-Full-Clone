@@ -37,6 +37,7 @@ function App(): React.JSX.Element {
   const [historyMessages, setHistoryMessages] = useState<Message[]>([])
   const [restPresence, setRestPresence] = useState<Presence | null>(null)
   const [feedback, setFeedback] = useState('')
+  const [runtimeMode, setRuntimeMode] = useState<'desktop' | 'web'>('desktop')
 
   const layoutMode = import.meta.env.VITE_LAYOUT_MODE
 
@@ -53,29 +54,43 @@ function App(): React.JSX.Element {
     setChannels(nextChannels)
   }
 
+  const syncCatalogsWithStatus = async (client: ApiClient, mode: 'desktop' | 'web'): Promise<void> => {
+    try {
+      await refreshCatalogs(client)
+      if (mode === 'web') {
+        setFeedback('Estado de la sesión actual: modo web (sin bridge de Electron)')
+      } else {
+        setFeedback('Estado de la sesión actual: desktop conectado')
+      }
+    } catch {
+      setUsers([])
+      setChannels([])
+      if (mode === 'web') {
+        setFeedback('Estado de la sesión actual: modo web, backend no disponible')
+      } else {
+        setFeedback('Estado de la sesión actual: desktop conectado, backend no disponible')
+      }
+    }
+  }
+
   useEffect(() => {
     const loadDesktopContext = async (): Promise<void> => {
       const bridge = (window as Window & { api?: DesktopApiBridge }).api
 
       if (!bridge?.getAppInfo || !bridge?.getRuntimeConfig) {
+        setRuntimeMode('web')
         const fallbackApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
         const fallbackWsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? DEFAULT_WS_BASE_URL
 
         setApiInfo('Slack Full Clone vdev | Electron bridge no disponible')
         setApiBaseUrl(fallbackApiBaseUrl)
         setWsBaseUrl(fallbackWsBaseUrl)
-        setFeedback('Estado de la sesión actual: modo web (sin bridge de Electron)')
-
         const fallbackClient = new ApiClient(fallbackApiBaseUrl)
-        try {
-          await refreshCatalogs(fallbackClient)
-        } catch {
-          setUsers([])
-          setChannels([])
-          setFeedback('Estado de la sesión actual: modo web, backend no disponible')
-        }
+        await syncCatalogsWithStatus(fallbackClient, 'web')
         return
       }
+
+      setRuntimeMode('desktop')
 
       const [info, runtime] = await Promise.all([
         bridge.getAppInfo(),
@@ -87,19 +102,28 @@ function App(): React.JSX.Element {
       setWsBaseUrl(runtime.wsBaseUrl)
 
       const client = new ApiClient(runtime.apiBaseUrl)
-      try {
-        await refreshCatalogs(client)
-      } catch {
-        setUsers([])
-        setChannels([])
-        setFeedback('Estado de la sesión actual: desktop conectado, backend no disponible')
-      }
+      await syncCatalogsWithStatus(client, 'desktop')
     }
 
     void loadDesktopContext().catch((error: Error) => {
       setFeedback(`Error cargando contexto: ${error.message}`)
     })
   }, [])
+
+  useEffect(() => {
+    if (!apiBaseUrl || !feedback.includes('backend no disponible')) {
+      return
+    }
+
+    const retryTimer = window.setInterval(() => {
+      const client = new ApiClient(apiBaseUrl)
+      void syncCatalogsWithStatus(client, runtimeMode)
+    }, 5000)
+
+    return () => {
+      window.clearInterval(retryTimer)
+    }
+  }, [apiBaseUrl, feedback, runtimeMode])
 
   const canConnect = useMemo(() => {
     return wsBaseUrl.length > 0 && channelId.length > 0 && userId.length > 0
